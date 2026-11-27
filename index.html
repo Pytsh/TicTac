@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>TicTac</title>
 <meta name="description" content="Suivi des heures supplémentaires et des gardes, enregistré sur cet appareil.">
 <meta name="theme-color" content="#e8edf7" media="(prefers-color-scheme: light)">
@@ -36,7 +36,7 @@
 --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
-html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+html{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--base);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;overflow-x:clip;min-height:100vh;-webkit-font-smoothing:antialiased}
 .bg{position:fixed;inset:0;overflow:hidden;z-index:-1}
 .bg i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.9;animation:drift 26s ease-in-out infinite alternate}
@@ -1391,6 +1391,11 @@ $('#instBtn').addEventListener('click', async () => {
     $('#instHint').textContent = 'Sur iPhone : Partager → « Sur l\'écran d\'accueil » pour l\'utiliser hors ligne comme une app. L\'app installée a son propre stockage : importez-y votre sauvegarde.';
   }
 }
+
+/* ---------- Pas de zoom : Safari iOS ignore user-scalable=no, on bloque donc le pincement ---------- */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, ev => ev.preventDefault(), {passive: false}));
+document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.scale !== undefined && ev.scale !== 1)) ev.preventDefault(); }, {passive: false});
+/* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* ---------- Démarrage ---------- */
 loadLocal();
