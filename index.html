@@ -197,6 +197,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .cal button:active{transform:scale(.92)}
 .cal button.off{background:transparent;color:var(--mut);box-shadow:inset 0 0 0 1px var(--line)}
 .cal button.now{box-shadow:inset 0 0 0 2px var(--acc)}
+.cal button.hol:not(.on){box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--fr) 55%,transparent);color:var(--fr)}
 .cal button.on{color:#fff;box-shadow:0 6px 16px -8px var(--sh)}
 .cal button.on.ast{background:var(--g)}
 .cal button.on.cong{background:var(--cg)}
@@ -1086,14 +1087,29 @@ const cleanMonths = o => {
   for (const k in o) {
     if (!/^\d{4}-\d{2}$/.test(k) || !o[k]) continue;
     const pick = a => Array.isArray(a) ? [...new Set(a.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d.startsWith(k)))].sort() : [];
-    const v = {ast: pick(o[k].ast), cong: pick(o[k].cong), fer: pick(o[k].fer)};
-    if (v.ast.length || v.cong.length || v.fer.length) out[k] = v;
+    const v = {ast: pick(o[k].ast), cong: pick(o[k].cong), fer: pick(o[k].fer), init: o[k].init === true};
+    if (v.ast.length || v.cong.length || v.fer.length || v.init) out[k] = v;
   }
   return out;
 };
 const loadMonths = () => { let o = null; try { o = JSON.parse(lsGet(LS_MONTHS)); } catch (e) {} monthMarks = cleanMonths(o); };
 const saveMonths = () => { monthMarks = cleanMonths(monthMarks); if (!lsSet(LS_MONTHS, JSON.stringify(monthMarks))) toast('Échec de l\'enregistrement'); };
 let xMonth = null, xStep = 'ast';
+/* Jours fériés officiels en France (métropole) ; Pâques par l'algorithme de Meeus */
+function easter(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const n = h + l - 7 * m + 114;
+  return new Date(y, Math.floor(n / 31) - 1, (n % 31) + 1);
+}
+const plusDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return iso(x); };
+function holidaysFR(y) {
+  const E = easter(y);
+  return [[`${y}-01-01`, 'Jour de l\'an'], [plusDays(E, 1), 'Lundi de Pâques'], [`${y}-05-01`, 'Fête du Travail'], [`${y}-05-08`, 'Victoire 1945'],
+    [plusDays(E, 39), 'Ascension'], [plusDays(E, 50), 'Lundi de Pentecôte'], [`${y}-07-14`, 'Fête nationale'], [`${y}-08-15`, 'Assomption'],
+    [`${y}-11-01`, 'Toussaint'], [`${y}-11-11`, 'Armistice 1918'], [`${y}-12-25`, 'Noël']].map(([date, name]) => ({date, name}));
+}
+const monthHolidays = k => holidaysFR(Number(k.slice(0, 4))).filter(h => mk(h.date) === k).sort((a, b) => a.date.localeCompare(b.date));
 const XST = ['ast', 'cong', 'fer'];
 const XS = {
   ast: {hint: 'Touchez les jours où vous avez été d\'astreinte. Touchez à nouveau pour annuler.', back: 'Annuler', next: 'Suivant'},
@@ -1104,15 +1120,18 @@ function paintX() {
   const k = xMonth, mm = monthMarks[k] || {ast: [], cong: [], fer: []}, A = new Set(mm.ast), C = new Set(mm.cong), FR = new Set(mm.fer || []), SET = {ast: A, cong: C, fer: FR};
   const [y, m] = k.split('-').map(Number), dim = new Date(y, m, 0).getDate(), first = (new Date(y, m - 1, 1).getDay() + 6) % 7, t = today();
   const gDays = new Set([...items.values()].filter(e => isG(e) && mk(e.date) === k).map(e => e.date));
+  const hols = monthHolidays(k), HOL = new Map(hols.map(x => [x.date, x.name]));
   $('#xTitle').textContent = `Exporter ${mName(k).toLowerCase()}`;
   document.querySelectorAll('[data-xs]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.xs === xStep)));
-  $('#xHint').textContent = XS[xStep].hint;
+  $('#xHint').textContent = xStep !== 'fer' ? XS[xStep].hint : (hols.length
+    ? `Jours fériés officiels présélectionnés : ${hols.map(x => `${x.name} (${F({weekday: 'short', day: 'numeric'}).format(pd(x.date))})`).join(', ')}. Touchez un jour pour l'ajouter ou le retirer. Un jour férié l'emporte sur un congé dans le PDF.`
+    : 'Aucun jour férié officiel ce mois-ci. Touchez un jour pour en ajouter un. Un jour férié l\'emporte sur un congé dans le PDF.');
   let h = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(w => `<div class="wd" aria-hidden="true">${w}</div>`).join('') + '<div></div>'.repeat(first);
   for (let d = 1; d <= dim; d++) {
     const date = `${k}-${pad(d)}`, dow = new Date(y, m - 1, d).getDay(), on = SET[xStep].has(date);
     const marks = xStep === 'ast' ? [C.has(date) && 'mc', FR.has(date) && 'mf', gDays.has(date) && 'mg'] : xStep === 'cong' ? [A.has(date) && 'ma', FR.has(date) && 'mf'] : [A.has(date) && 'ma', C.has(date) && 'mc'];
-    const lbl = `${DAY_L[dow]} ${d}${A.has(date) ? ', astreinte' : ''}${C.has(date) ? ', congé' : ''}${FR.has(date) ? ', férié' : ''}${gDays.has(date) ? ', garde enregistrée' : ''}`;
-    h += `<button type="button" class="${xStep}${on ? ' on' : ''}${daySegs(dow).length ? '' : ' off'}${date === t ? ' now' : ''}" data-xd="${date}" aria-pressed="${on}" aria-label="${esc(lbl)}">${d}<i>${marks.filter(Boolean).map(c => `<b class="${c}"></b>`).join('')}</i></button>`;
+    const lbl = `${DAY_L[dow]} ${d}${A.has(date) ? ', astreinte' : ''}${C.has(date) ? ', congé' : ''}${FR.has(date) ? ', férié' : ''}${HOL.has(date) ? `, jour férié officiel : ${HOL.get(date)}` : ''}${gDays.has(date) ? ', garde enregistrée' : ''}`;
+    h += `<button type="button" class="${xStep}${on ? ' on' : ''}${xStep === 'fer' && HOL.has(date) ? ' hol' : ''}${daySegs(dow).length ? '' : ' off'}${date === t ? ' now' : ''}" data-xd="${date}" aria-pressed="${on}" aria-label="${esc(lbl)}">${d}<i>${marks.filter(Boolean).map(c => `<b class="${c}"></b>`).join('')}</i></button>`;
   }
   $('#cal').innerHTML = h;
   const LG = {g: xStep === 'ast' ? 'Garde enregistrée' : 'Astreinte', cc: 'Congé', fr: 'Férié'};
@@ -1123,7 +1142,11 @@ function paintX() {
   $('#xBack').textContent = XS[xStep].back; $('#xNext').textContent = XS[xStep].next;
 }
 function openExport() {
-  xMonth = hm; xStep = 'ast'; paintX();
+  xMonth = hm; xStep = 'ast';
+  /* Première ouverture du mois : présélection des jours fériés officiels */
+  const mm = monthMarks[xMonth] || (monthMarks[xMonth] = {ast: [], cong: [], fer: []});
+  if (!mm.init) { mm.fer = [...new Set([...(mm.fer || []), ...monthHolidays(xMonth).map(x => x.date)])]; mm.init = true; saveMonths(); }
+  paintX();
   clearTimeout(toastT); $('#toast').classList.remove('show');
   lockScroll();
   $('#xScrim').classList.add('open'); $('#xScrim').setAttribute('aria-hidden', 'false');
