@@ -231,9 +231,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .scrim.open{background:rgba(5,8,20,calc(.28 * var(--k,1)));visibility:visible;pointer-events:auto;transition:background .25s,visibility 0s}
 .scrim{overscroll-behavior:contain;touch-action:none}
 .sheet{overscroll-behavior:contain;touch-action:pan-y}
-html.lock,html.lock body{overflow:hidden}
-body.lock{position:fixed;left:0;right:0;width:100%}
-.sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;transform:translateY(105%);transition:transform .26s cubic-bezier(.4,0,1,1)}
+html.lock{overflow:hidden;overscroll-behavior:none}
+.sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;transform:translateY(105%);transition:transform .26s cubic-bezier(.4,0,1,1);will-change:transform}
 .scrim.open .sheet{transform:none;transition:transform .36s cubic-bezier(.2,.9,.3,1.08)}
 .grip{margin:-10px -20px 0;padding:10px 0 14px;touch-action:none;cursor:grab}
 .grip:active{cursor:grabbing}
@@ -730,24 +729,23 @@ function openSheet(e) {
   fT.checked = e ? !!e.trajet : qT.checked;
   fSt.value = e ? (e.start || '') : (qG.checked ? qSt.value : '');
   paintClr(); paintF();
+  openScrim($('#scrim'), $('#sTitle'));
+}
+/* Ouverture en deux temps : l'état de départ est d'abord affiché, puis l'animation démarre à l'image suivante.
+   Le focus est donné à la fin de l'animation, pour ne pas la perturber. */
+function openScrim(scrim, focusEl) {
   lockScroll();
-  $('#scrim').classList.add('open'); $('#scrim').setAttribute('aria-hidden', 'false');
-  setTimeout(() => $('#sTitle').focus(), 50);
+  scrim.setAttribute('aria-hidden', 'false');
+  void scrim.offsetHeight;
+  requestAnimationFrame(() => {
+    scrim.classList.add('open');
+    setTimeout(() => { if (scrim.classList.contains('open')) focusEl.focus({preventScroll: true}); }, 380);
+  });
 }
-let lockY = null;
-function lockScroll() {
-  if (lockY !== null) return;
-  lockY = window.scrollY;
-  document.documentElement.classList.add('lock');
-  document.body.classList.add('lock'); document.body.style.top = `-${lockY}px`;
-}
-function unlockScroll() {
-  if (lockY === null) return;
-  const y = lockY; lockY = null;
-  document.documentElement.classList.remove('lock');
-  document.body.classList.remove('lock'); document.body.style.top = '';
-  window.scrollTo(0, y);
-}
+/* Verrouillage léger du défilement : le body n'est plus passé en position fixe, ce qui obligeait
+   le navigateur à recalculer et redessiner toute la page (et tous ses effets de verre) à l'ouverture. */
+function lockScroll() { document.documentElement.classList.add('lock'); }
+function unlockScroll() { document.documentElement.classList.remove('lock'); }
 function closeSheet() { unlockScroll(); $('#scrim').classList.remove('open'); $('#scrim').setAttribute('aria-hidden', 'true'); editing = null; }
 
 $('#sheet').addEventListener('submit', ev => {
@@ -1254,9 +1252,7 @@ function openExport() {
   if (!mm.init) { mm.fer = [...new Set([...(mm.fer || []), ...monthHolidays(xMonth).map(x => x.date)])]; mm.init = true; saveMonths(); }
   paintX();
   clearTimeout(toastT); $('#toast').classList.remove('show');
-  lockScroll();
-  $('#xScrim').classList.add('open'); $('#xScrim').setAttribute('aria-hidden', 'false');
-  setTimeout(() => $('#xTitle').focus(), 50);
+  openScrim($('#xScrim'), $('#xTitle'));
 }
 function closeExport() { unlockScroll(); $('#xScrim').classList.remove('open'); $('#xScrim').setAttribute('aria-hidden', 'true'); }
 function generatePDF() {
