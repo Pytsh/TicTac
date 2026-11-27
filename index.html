@@ -32,7 +32,7 @@
 --acc:light-dark(#0a66ff,#4a9bff);--g:light-dark(#ec7a12,#ffa64a);--gInk:light-dark(#a54a00,#ffb870);--red:light-dark(#d93025,#ff6a5f);
 --line:light-dark(rgba(11,16,32,.08),rgba(255,255,255,.09));
 --track:light-dark(rgba(11,16,32,.08),rgba(255,255,255,.1));
---cg:light-dark(#0f9488,#34c7b5);--fr:light-dark(#d93a32,#ff6b61);--as:light-dark(#7c4dff,#a990ff);--asInk:light-dark(#5a2fd6,#c4b2ff);
+--cg:light-dark(#0f9488,#34c7b5);--sheetBg:light-dark(rgb(243,245,252),rgb(22,25,44));--fr:light-dark(#d93a32,#ff6b61);--as:light-dark(#7c4dff,#a990ff);--asInk:light-dark(#5a2fd6,#c4b2ff);
 --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
@@ -232,6 +232,11 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .scrim{overscroll-behavior:contain;touch-action:none}
 .sheet{overscroll-behavior:contain;touch-action:pan-y}
 html.lock{overflow:hidden;overscroll-behavior:none}
+/* Panneaux : verre presque opaque, sans backdrop-filter. Sur iPhone, flouter en direct l'arrière-plan
+   (lui-même plein d'effets de verre) pendant que le panneau glisse bloquait l'animation d'apparition. */
+.sheet.glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:linear-gradient(155deg,var(--sheen),transparent 46%),var(--sheetBg)}
+/* Halos d'arrière-plan mis en pause pendant qu'un panneau est ouvert */
+html.lock .bg i{animation-play-state:paused}
 .sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;transform:translateY(105%);transition:transform .26s cubic-bezier(.4,0,1,1);will-change:transform}
 .scrim.open .sheet{transform:none;transition:transform .36s cubic-bezier(.2,.9,.3,1.08)}
 .grip{margin:-10px -20px 0;padding:10px 0 14px;touch-action:none;cursor:grab}
@@ -267,7 +272,7 @@ html.lock{overflow:hidden;overscroll-behavior:none}
 .field input::-webkit-datetime-edit{padding:0;line-height:1.4em}
 .field input::-webkit-calendar-picker-indicator{opacity:.55;cursor:pointer;margin-left:auto}
 @supports (-webkit-touch-callout:none){.field input[type=date],.field input[type=time]{line-height:48px}}
-.acts{position:sticky;bottom:-24px;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin:20px -20px -24px;padding:14px 20px calc(24px + var(--sab));background:color-mix(in srgb,var(--base) 78%,transparent);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-top:1px solid var(--line)}
+.acts{position:sticky;bottom:-24px;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin:20px -20px -24px;padding:14px 20px calc(24px + var(--sab));background:var(--sheetBg);border-top:1px solid var(--line)}
 .acts .pri{margin:0}
 .sec{min-height:54px;border-radius:999px;background:var(--track);font-weight:600}
 .toast{position:fixed;left:50%;bottom:calc(168px + var(--sab));z-index:20;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 18px;border-radius:999px;max-width:calc(100% - 32px);transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:.25s}
