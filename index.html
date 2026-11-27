@@ -39,11 +39,15 @@
 html{touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--base);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;overflow-x:clip;min-height:100vh;-webkit-font-smoothing:antialiased}
 .bg{position:fixed;inset:0;overflow:hidden;z-index:-1}
-.bg i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.9;animation:drift 26s ease-in-out infinite alternate}
-.bg i:nth-child(1){width:60vmax;height:60vmax;background:var(--b1);left:-18vmax;top:-20vmax}
-.bg i:nth-child(2){width:46vmax;height:46vmax;background:var(--b2);right:-16vmax;top:12vh;animation-delay:-8s}
-.bg i:nth-child(3){width:44vmax;height:44vmax;background:var(--b3);left:10vw;bottom:-22vmax;animation-delay:-15s}
-.bg i:nth-child(4){width:28vmax;height:28vmax;background:var(--b4);right:6vw;bottom:8vh;opacity:.6;animation-delay:-4s}
+/* Halos dessinés avec des dégradés radiaux plutôt qu'avec filter: blur(70px) : même rendu doux, mais sans recalculer
+   un énorme flou à chaque image de l'animation, ce qui saturait la carte graphique de l'iPhone et faisait sauter
+   les animations des panneaux (eux-mêmes floutés par-dessus). */
+.bg i{position:absolute;opacity:.9;animation:drift 26s ease-in-out infinite alternate}
+.bg i::before{content:"";position:absolute;inset:var(--sp,-40%);border-radius:50%;background:radial-gradient(closest-side,var(--c) 20%,color-mix(in srgb,var(--c) 72%,transparent) 40%,color-mix(in srgb,var(--c) 36%,transparent) 60%,color-mix(in srgb,var(--c) 10%,transparent) 80%,transparent)}
+.bg i:nth-child(1){width:60vmax;height:60vmax;--c:var(--b1);left:-18vmax;top:-20vmax}
+.bg i:nth-child(2){width:46vmax;height:46vmax;--c:var(--b2);--sp:-45%;right:-16vmax;top:12vh;animation-delay:-8s}
+.bg i:nth-child(3){width:44vmax;height:44vmax;--c:var(--b3);--sp:-55%;left:10vw;bottom:-22vmax;animation-delay:-15s}
+.bg i:nth-child(4){width:28vmax;height:28vmax;--c:var(--b4);--sp:-75%;right:6vw;bottom:8vh;opacity:.42;animation-delay:-4s}
 @keyframes drift{to{transform:translate(4vmax,3vmax) scale(1.08)}}
 @media(prefers-reduced-motion:reduce){.bg i,.sheet,.scrim,.toast{animation:none!important;transition:none!important}}
 .glass{position:relative;background:linear-gradient(155deg,var(--sheen),transparent 46%),var(--glass);-webkit-backdrop-filter:blur(30px) saturate(190%);backdrop-filter:blur(30px) saturate(190%);border:1px solid var(--edge);border-radius:30px;box-shadow:inset 0 1px 1px var(--hi),inset 0 -1px 2px rgba(255,255,255,.07),0 14px 44px -12px var(--sh)}
@@ -227,11 +231,13 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .fab{position:fixed;z-index:6;right:max(calc(16px + var(--sar)),calc((100vw - 580px) / 2 + 16px));bottom:calc(max(18px,calc(var(--sab) + 6px)) + 78px);width:60px;height:60px;border-radius:50%;display:grid;place-items:center;color:#fff;background:var(--acc);border:0;box-shadow:inset 0 1px 1px rgba(255,255,255,.45),0 12px 28px -8px color-mix(in srgb,var(--acc) 70%,transparent);transition:transform .12s}
 .fab svg{width:28px;height:28px;stroke-width:2.4}
 /* Pas de fondu d'opacité sur le voile : une opacité < 1 casserait le flou (backdrop-filter) du panneau en verre */
-.scrim{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,8,20,0);visibility:hidden;pointer-events:none;transition:background .25s,visibility 0s linear .3s}
+.scrim{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,8,20,0);visibility:hidden;pointer-events:none;transition:background .25s}
 .scrim.open{background:rgba(5,8,20,calc(.28 * var(--k,1)));visibility:visible;pointer-events:auto;transition:background .25s,visibility 0s}
+/* « Préchauffage » : le voile devient visible (transparent, panneau hors écran) dès que le doigt se pose sur un bouton d'ouverture,
+   pour que le navigateur prépare le panneau et son flou avant le début de l'animation */
+.scrim.warm{visibility:visible;transition:background .25s,visibility 0s}
 .scrim{overscroll-behavior:contain;touch-action:none}
 .sheet{overscroll-behavior:contain;touch-action:pan-y}
-html.lock{overflow:hidden;overscroll-behavior:none}
 .sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;transform:translateY(105%);transition:transform .26s cubic-bezier(.4,0,1,1);will-change:transform}
 .scrim.open .sheet{transform:none;transition:transform .36s cubic-bezier(.2,.9,.3,1.08)}
 .grip{margin:-10px -20px 0;padding:10px 0 14px;touch-action:none;cursor:grab}
@@ -733,20 +739,41 @@ function openSheet(e) {
 }
 /* Ouverture en deux temps : l'état de départ est d'abord affiché, puis l'animation démarre à l'image suivante.
    Le focus est donné à la fin de l'animation, pour ne pas la perturber. */
+/* Ouverture : le panneau est d'abord rendu hors écran (préchauffage), puis l'animation démarre deux images plus tard,
+   une fois ce rendu affiché. Le défilement de la page n'est plus bloqué en modifiant <html> : ce changement forçait
+   l'iPhone à recalculer et redessiner toute la page, avec tous ses effets de verre, au moment précis où l'animation
+   devait commencer ; l'animation se déroulait pendant ce long calcul et le panneau apparaissait d'un coup.
+   Le voile (touch-action: none) et le panneau (overscroll-behavior: contain) empêchent déjà le défilement de la page. */
+const warmTimers = new WeakMap();
+function warmScrim(scrim) {
+  scrim.classList.add('warm');
+  clearTimeout(warmTimers.get(scrim));
+  warmTimers.set(scrim, setTimeout(() => { if (!scrim.classList.contains('open')) scrim.classList.remove('warm'); }, 1000));
+}
 function openScrim(scrim, focusEl) {
-  lockScroll();
+  warmScrim(scrim);
   scrim.setAttribute('aria-hidden', 'false');
-  void scrim.offsetHeight;
-  requestAnimationFrame(() => {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
     scrim.classList.add('open');
     setTimeout(() => { if (scrim.classList.contains('open')) focusEl.focus({preventScroll: true}); }, 380);
-  });
+  }));
 }
-/* Verrouillage léger du défilement : le body n'est plus passé en position fixe, ce qui obligeait
-   le navigateur à recalculer et redessiner toute la page (et tous ses effets de verre) à l'ouverture. */
-function lockScroll() { document.documentElement.classList.add('lock'); }
-function unlockScroll() { document.documentElement.classList.remove('lock'); }
-function closeSheet() { unlockScroll(); $('#scrim').classList.remove('open'); $('#scrim').setAttribute('aria-hidden', 'true'); editing = null; }
+function closeScrim(scrim) {
+  scrim.classList.remove('open'); scrim.setAttribute('aria-hidden', 'true');
+  clearTimeout(warmTimers.get(scrim));
+  warmTimers.set(scrim, setTimeout(() => { if (!scrim.classList.contains('open')) scrim.classList.remove('warm'); }, 320));
+}
+document.addEventListener('pointerdown', ev => {
+  const b = ev.target.closest('#fab,#addBtn,[data-edit],#exportBtn,#sDel');
+  if (b) warmScrim(b.id === 'exportBtn' ? $('#xScrim') : $('#scrim'));
+}, {passive: true});
+/* Pas de défilement de la page derrière le voile (molette, trackpad, anciens iOS) */
+document.querySelectorAll('.scrim').forEach(sc => {
+  const stop = ev => { if (!ev.target.closest('.sheet')) ev.preventDefault(); };
+  sc.addEventListener('wheel', stop, {passive: false});
+  sc.addEventListener('touchmove', stop, {passive: false});
+});
+function closeSheet() { closeScrim($('#scrim')); editing = null; }
 
 $('#sheet').addEventListener('submit', ev => {
   ev.preventDefault();
@@ -1254,7 +1281,7 @@ function openExport() {
   clearTimeout(toastT); $('#toast').classList.remove('show');
   openScrim($('#xScrim'), $('#xTitle'));
 }
-function closeExport() { unlockScroll(); $('#xScrim').classList.remove('open'); $('#xScrim').setAttribute('aria-hidden', 'true'); }
+function closeExport() { closeScrim($('#xScrim')); }
 function generatePDF() {
   const k = xMonth; let bytes;
   try { bytes = exportPDF(k); } catch (err) { toast('Impossible de générer le PDF'); return; }
