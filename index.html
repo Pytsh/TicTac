@@ -238,8 +238,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .scrim.warm{visibility:visible;transition:background .25s,visibility 0s}
 .scrim{overscroll-behavior:contain;touch-action:none}
 .sheet{overscroll-behavior:contain;touch-action:pan-y}
-.sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;transform:translateY(105%);transition:transform .26s cubic-bezier(.4,0,1,1);will-change:transform}
-.scrim.open .sheet{transform:none;transition:transform .36s cubic-bezier(.2,.9,.3,1.08)}
+.sheet{width:min(580px,100%);max-height:92vh;max-height:92dvh;overflow:auto;border-radius:34px 34px 0 0;padding:10px 20px 24px;will-change:transform}
+.scrim:not(.open) .sheet{transform:translateY(105%)}
 .grip{margin:-10px -20px 0;padding:10px 0 14px;touch-action:none;cursor:grab}
 .grip:active{cursor:grabbing}
 .grab{width:40px;height:5px;border-radius:3px;background:light-dark(rgba(11,16,32,.22),rgba(255,255,255,.3));margin:0 auto}
@@ -282,7 +282,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .toast button[hidden]{display:none}
 .toast span{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .toast button{min-height:40px;padding:0 14px;border-radius:999px;color:var(--acc);font-weight:650}
-@media(min-width:620px){.scrim{align-items:center}.sheet{border-radius:34px;transform:translateY(calc(50vh + 55%))}.grip{display:none}.sheet{padding-top:22px}.acts{padding-bottom:24px}}
+@media(min-width:620px){.scrim{align-items:center}.sheet{border-radius:34px}.scrim:not(.open) .sheet{transform:translateY(calc(50vh + 55%))}.grip{display:none}.sheet{padding-top:22px}.acts{padding-bottom:24px}}
 @media(max-width:380px){.stat b{font-size:15px}section.card{padding:18px}}
 </style>
 </head>
@@ -750,18 +750,48 @@ function warmScrim(scrim) {
   clearTimeout(warmTimers.get(scrim));
   warmTimers.set(scrim, setTimeout(() => { if (!scrim.classList.contains('open')) scrim.classList.remove('warm'); }, 1000));
 }
+/* Animation du panneau pilotée image par image (requestAnimationFrame) plutôt que par une transition CSS :
+   sur iPhone, une transition CSS sur un élément flouté (backdrop-filter) peut ne pas s'afficher pendant son
+   déroulement, le panneau n'apparaissant qu'à la fin. Ici, chaque image est dessinée explicitement. */
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeOutSoft = p => { const c1 = 0.9, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };
+const easeIn = p => p * p * p;
+const sheetAnims = new WeakMap();
+function animY(el, from, to, dur, ease, done) {
+  cancelAnimationFrame(sheetAnims.get(el));
+  if (reduceMotion.matches || dur <= 0) { el.style.transform = `translateY(${to}px)`; done && done(); return; }
+  const t0 = performance.now();
+  el.style.transform = `translateY(${from}px)`;
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    el.style.transform = `translateY(${from + (to - from) * ease(p)}px)`;
+    if (p < 1) sheetAnims.set(el, requestAnimationFrame(step)); else if (done) done();
+  };
+  sheetAnims.set(el, requestAnimationFrame(step));
+}
+const curY = el => { const m = /translateY\((-?[\d.]+)px\)/.exec(el.style.transform); return m ? Number(m[1]) : 0; };
+/* Distance pour sortir complètement le panneau par le bas de l'écran, mesurée depuis sa position de repos */
+function offDist(sheet) { const prev = sheet.style.transform; sheet.style.transform = 'translateY(0px)'; const top = sheet.getBoundingClientRect().top; sheet.style.transform = prev; return Math.max(200, innerHeight - top + 24); }
 function openScrim(scrim, focusEl) {
+  const sheet = scrim.querySelector('.sheet');
   warmScrim(scrim);
   scrim.setAttribute('aria-hidden', 'false');
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    scrim.classList.add('open');
-    setTimeout(() => { if (scrim.classList.contains('open')) focusEl.focus({preventScroll: true}); }, 380);
-  }));
+  const d = offDist(sheet);
+  sheet.style.transition = 'none';
+  sheet.style.transform = `translateY(${d}px)`;
+  scrim.classList.add('open');
+  animY(sheet, d, 0, 420, easeOutSoft, () => { sheet.style.transform = ''; sheet.style.transition = ''; });
+  setTimeout(() => { if (scrim.classList.contains('open')) focusEl.focus({preventScroll: true}); }, 440);
 }
 function closeScrim(scrim) {
+  const sheet = scrim.querySelector('.sheet'), from = curY(sheet), d = offDist(sheet);
   scrim.classList.remove('open'); scrim.setAttribute('aria-hidden', 'true');
   clearTimeout(warmTimers.get(scrim));
-  warmTimers.set(scrim, setTimeout(() => { if (!scrim.classList.contains('open')) scrim.classList.remove('warm'); }, 320));
+  sheet.style.transition = 'none';
+  animY(sheet, from, d, 240, easeIn, () => {
+    sheet.style.transform = ''; sheet.style.transition = ''; scrim.style.removeProperty('--k');
+    if (!scrim.classList.contains('open')) scrim.classList.remove('warm');
+  });
 }
 document.addEventListener('pointerdown', ev => {
   const b = ev.target.closest('#fab,#addBtn,[data-edit],#exportBtn,#sDel');
@@ -813,11 +843,11 @@ function dragEnd(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
   const {dy, v} = drag; drag = null;
   if (dy > Math.min(140, sheetEl.offsetHeight * 0.3) || (v > 0.5 && dy > 20)) {
-    sheetEl.style.transition = 'transform .24s ease-in';
-    sheetEl.style.transform = 'translateY(110%)'; scrimEl.style.setProperty('--k', '0');
-    setTimeout(() => { closeSheet(); requestAnimationFrame(() => { sheetEl.style.cssText = ''; scrimEl.style.cssText = ''; }); }, 240);
+    scrimEl.style.setProperty('--k', '0');
+    closeSheet();
   } else {
-    sheetEl.style.cssText = ''; scrimEl.style.cssText = '';
+    scrimEl.style.removeProperty('--k');
+    animY(sheetEl, dy, 0, 220, easeOut, () => { sheetEl.style.transform = ''; sheetEl.style.transition = ''; });
   }
 }
 ['#grip', '.shead'].forEach(sel => {
