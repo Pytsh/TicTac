@@ -362,6 +362,11 @@ body.lock{position:fixed;left:0;right:0;width:100%}
         <label class="field"><span>Nom</span><input id="pName" type="text" maxlength="60" autocomplete="name" autocapitalize="words" placeholder="Prénom Nom"></label>
       </div>
     </section>
+    <section class="card glass" aria-labelledby="wTitle">
+      <h2 id="wTitle">Horaires habituels</h2>
+      <p class="hint">Utilisés pour la fiche horaire du PDF. Les heures sup du midi prolongent le matin, celles du soir prolongent l'après-midi.</p>
+      <div class="days" id="days"></div>
+    </section>
     <section class="card glass" aria-labelledby="rTitle">
       <h2 id="rTitle">Tarifs, trajet et imposition</h2>
       <p class="hint" id="rSync">Enregistrés sur cet appareil.</p>
@@ -372,11 +377,6 @@ body.lock{position:fixed;left:0;right:0;width:100%}
         <label class="field"><span>Temps de trajet par garde</span><span class="unit"><input id="rTr" type="text" inputmode="numeric" placeholder="40" autocomplete="off"><em>min</em></span></label>
       </div>
       <p class="hint">Le temps de trajet s'applique aux nouvelles gardes : celles déjà saisies gardent leur durée.</p>
-    </section>
-    <section class="card glass" aria-labelledby="wTitle">
-      <h2 id="wTitle">Horaires habituels</h2>
-      <p class="hint">Utilisés pour la fiche horaire du PDF. Les heures sup du midi prolongent le matin, celles du soir prolongent l'après-midi.</p>
-      <div class="days" id="days"></div>
     </section>
     <section class="card glass" aria-labelledby="bTitle">
       <h2 id="bTitle">Données</h2>
