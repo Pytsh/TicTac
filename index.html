@@ -1177,7 +1177,7 @@ function exportPDF(k) {
     const fer = ferS.has(date), cong = !fer && congS.has(date), ast = astS.has(date);
     totN += ot; gN += gar.length; if (ast) aN++;
     const ss = fer || cong ? null : daySchedule(dow, midi, soir), by = yy + rh / 2 + 3.4;
-    if (!ss) doc.rect(L, yy, R - L, rh, fer ? [0.995, 0.925, 0.915] : cong ? [0.91, 0.965, 0.955] : [0.965, 0.966, 0.975]);
+    if (!ss) doc.rect(L, yy, R - L, rh, fer ? [0.995, 0.925, 0.915] : cong ? [0.91, 0.965, 0.955] : dow === 0 ? [0.915, 0.92, 0.935] : [0.965, 0.966, 0.975]);
     doc.text(c1[0] + 8, by, `${DOW_S[dow]} ${d}`, {size: S, color: ss ? ink : mut});
     if (!ss) doc.text(c1[1] + 8, by, fer ? 'Férié' : cong ? 'Congé' : 'Repos', {size: S, color: fer ? [0.78, 0.18, 0.14] : cong ? [0.05, 0.45, 0.41] : mut});
     else {
@@ -1225,7 +1225,7 @@ function exportPDF(k) {
     if (!gs.length) return y2;
     y2 += 8;
     doc.rect(L, y2, R - L, hh, band);
-    ['Durée', 'Début', 'Trajet', 'Notes'].forEach((t, i) => doc.text(c2[i] + 8, y2 + 14.5, t, {size: S, bold: true}));
+    ['Durée', 'Heure', 'Trajet', 'Notes'].forEach((t, i) => doc.text(c2[i] + 8, y2 + 14.5, t, {size: S, bold: true}));
     return y2 + hh;
   };
   let y2 = head2(false);
@@ -1472,7 +1472,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 27';
+const APP_VERSION = '2026-11-27 · 28';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
