@@ -355,6 +355,13 @@ body.lock{position:fixed;left:0;right:0;width:100%}
   </div>
 
   <div id="parametres">
+    <section class="card glass" aria-labelledby="nTitle">
+      <h2 id="nTitle">Profil</h2>
+      <p class="hint">Le nom est affiché dans le titre de la fiche horaire du PDF.</p>
+      <div class="fields">
+        <label class="field"><span>Nom</span><input id="pName" type="text" maxlength="60" autocomplete="name" autocapitalize="words" placeholder="Prénom Nom"></label>
+      </div>
+    </section>
     <section class="card glass" aria-labelledby="rTitle">
       <h2 id="rTitle">Tarifs et imposition</h2>
       <p class="hint" id="rSync">Enregistrés sur cet appareil.</p>
@@ -878,6 +885,13 @@ async function saveFile(bytes, name, type) {
   return 'saved';
 }
 
+/* ---------- Profil : nom affiché dans le PDF ---------- */
+const LS_NAME = 'tictac-nom';
+const userName = () => (lsGet(LS_NAME) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+function loadName() { const el = $('#pName'); if (document.activeElement !== el) el.value = userName(); }
+$('#pName').addEventListener('input', () => { if (lsSet(LS_NAME, $('#pName').value.slice(0, 60))) askPersist(); else toast('Échec de l\'enregistrement du nom'); });
+$('#pName').addEventListener('blur', loadName);
+
 /* ---------- Horaires habituels (paramétrables, jour par jour) ---------- */
 const LS_HOURS = 'tictac-horaires';
 const DAYS = [1, 2, 3, 4, 5, 6, 0];
@@ -1028,15 +1042,17 @@ function wrapText(s, width, size, b) {
   if (line) out.push(line);
   return out.length ? out : [''];
 }
+const fitTitle = (t, w) => { let z = 18; while (z > 13 && tw(t, z, true) > w) z -= .5; return z; };
 function exportPDF(k) {
   const [y, m] = k.split('-').map(Number), dim = new Date(y, m, 0).getDate();
   const mt = `${cap(MON_L[m - 1])} ${y}`;
   const es = [...items.values()].filter(e => mk(e.date) === k);
-  const doc = makePDF(`TicTac – ${mt}`);
+  const nm = userName(), doc = makePDF(`TicTac – ${nm ? nm + ' – ' : ''}${mt}`);
   const L = 40, R = doc.W - 40, ink = [0.07, 0.08, 0.13], mut = [0.42, 0.45, 0.52], org = [0.78, 0.36, 0], astC = [0.4, 0.22, 0.82], band = [0.93, 0.94, 0.97], S = 9.5;
   /* Page 1 : tableau du mois */
   doc.page();
-  doc.text(L, 58, `Fiche horaire – ${mt}`, {size: 18, bold: true});
+  const ttl = `Fiche horaire – ${nm ? nm + ' – ' : ''}${mt}`;
+  doc.text(L, 58, ttl, {size: Math.max(13, fitTitle(ttl, R - L)), bold: true});
   /* Bloc « Certifié conforme » en bas de page : date de génération + cadre pour la signature manuscrite */
   const sigTop = doc.H - 112, genDate = F({day: 'numeric', month: 'long', year: 'numeric'}).format(new Date());
   const signBlock = () => {
@@ -1257,7 +1273,8 @@ $('#bkExp').addEventListener('click', () => {
     entries: [...items.values()].sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at).map(({id, date, min, type, moment, trajet, start, note, at}) => ({id, date, min, type, moment, trajet, start, note, at})),
     rates: {rn: rates.rn, rg: rates.rg, tx: rates.tx},
     horaires: hours,
-    mois: monthMarks
+    mois: monthMarks,
+    nom: userName()
   };
   const bytes = new TextEncoder().encode(JSON.stringify(data, null, 1));
   saveFile(bytes, `TicTac-sauvegarde-${today()}.json`, 'application/json').then(r => {
@@ -1276,6 +1293,7 @@ $('#bkFile').addEventListener('change', async () => {
   const prevItems = new Map(items), prevRates = {...rates}, prevHours = JSON.parse(JSON.stringify(hours)), prevMonths = JSON.parse(JSON.stringify(monthMarks));
   let n = 0;
   list.forEach(x => { const c = clean(x && typeof x.id === 'string' && x.id ? x.id.slice(0, 64) : newId(), x); if (c) { items.set(c.id, c); n++; } });
+  if (o && !Array.isArray(o) && typeof o.nom === 'string' && o.nom.trim()) { lsSet(LS_NAME, o.nom.trim().slice(0, 60)); loadName(); }
   if (o && !Array.isArray(o) && o.mois) { const mo = cleanMonths(o.mois); for (const k in mo) monthMarks[k] = mo[k]; saveMonths(); }
   if (o && !Array.isArray(o) && o.horaires) { hours = cleanHours(o.horaires); saveHours(); renderDays(); }
   if (o && !Array.isArray(o) && o.rates) { const r = cleanRates(o.rates); for (const k in r) if (r[k] !== null) rates[k] = r[k]; }
@@ -1293,6 +1311,7 @@ window.addEventListener('storage', ev => {
   if (ev.key === LS_RATES || ev.key === null) loadRates();
   if (ev.key === LS_HOURS || ev.key === null) loadHours();
   if (ev.key === LS_MONTHS || ev.key === null) loadMonths();
+  if (ev.key === LS_NAME || ev.key === null) loadName();
 });
 
 /* ---------- Application installable et hors ligne ---------- */
@@ -1355,6 +1374,7 @@ loadLocal();
 loadRates();
 loadHours();
 loadMonths();
+loadName();
 if (!storageOK) status('Stockage du navigateur indisponible : les données ne seront pas conservées', true);
 route(); render();
 }
