@@ -1313,7 +1313,7 @@ function paintX() {
   }
   $('#cal').innerHTML = h;
   const LG = {g: 'Garde', as: 'Astreinte', cc: 'Congé', fr: 'Férié'};
-  const lg = xStep === 'ast' ? ['g', 'cc', 'fr'] : xStep === 'cong' ? ['as', 'fr', 'g'] : ['as', 'cc', 'g'];
+  const lg = ['g', 'as', 'cc', 'fr']; /* même ordre à toutes les étapes */
   $('#xLeg').innerHTML = lg.map(c => `<span><i class="${c}"></i>${LG[c]}</span>`).join('') + '<span><i style="box-shadow:inset 0 0 0 1px var(--mut)"></i>Repos habituel</span>';
   const a = mm.ast.length, c = mm.cong.length, f = (mm.fer || []).length;
   $('#xSum').innerHTML = `<span><i class="as"></i>Astreintes <b>${a}</b></span><span><i class="cc"></i>Congés <b>${c}</b></span><span><i class="fr"></i>Fériés <b>${f}</b></span>`;
@@ -1468,7 +1468,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 24';
+const APP_VERSION = '2026-11-27 · 25';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
