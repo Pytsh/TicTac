@@ -394,6 +394,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
       </div>
       <input type="file" id="bkFile" accept="application/json,.json,text/plain" hidden>
       <p class="hint" id="instHint" hidden></p>
+      <p class="hint" id="appVer"></p>
     </section>
   </div>
 </main>
@@ -1449,6 +1450,10 @@ $('#instBtn').addEventListener('click', async () => {
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, ev => ev.preventDefault(), {passive: false}));
 document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.scale !== undefined && ev.scale !== 1)) ev.preventDefault(); }, {passive: false});
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
+
+/* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
+const APP_VERSION = '2026-11-27 · 21';
+$('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
 loadLocal();

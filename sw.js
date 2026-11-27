@@ -1,7 +1,7 @@
 /* TicTac – service worker : garde la page en cache pour l'ouvrir sans réseau.
    À placer dans le même dossier que TicTac.html. Aucune donnée saisie ne passe par ici :
    les entrées restent dans le stockage du navigateur (localStorage). */
-const CACHE = 'tictac-v1';
+const CACHE = 'tictac-v2';
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
@@ -21,30 +21,30 @@ self.addEventListener('activate', event => {
   })());
 });
 
-/* Cache d'abord (ouverture instantanée, même hors ligne), puis mise à jour en arrière-plan :
-   une nouvelle version du fichier sera visible au lancement suivant. */
+/* Page : réseau d'abord (une nouvelle version est visible dès l'ouverture), avec repli sur le cache
+   si le réseau ne répond pas en 2,5 s ou si l'appareil est hors ligne. Autres fichiers : cache d'abord. */
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   const nav = req.mode === 'navigate';
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const hit = await cache.match(req, {ignoreSearch: nav});
-    const fresh = fetch(req).then(res => {
+    const fromCache = async () => (await cache.match(req, {ignoreSearch: nav})) ||
+      (nav ? (async () => { const k = (await cache.keys()).find(r => /\.html?$|\/$/.test(new URL(r.url).pathname)); return k ? cache.match(k) : undefined; })() : undefined);
+    const fresh = fetch(req, nav ? {cache: 'no-store'} : undefined).then(res => {
       if (res && res.ok && res.type === 'basic') cache.put(req, res.clone()).catch(() => {});
       return res;
     });
-    if (hit) {
-      event.waitUntil(fresh.catch(() => {}));
-      return hit;
+    if (nav) {
+      const timeout = new Promise(r => setTimeout(r, 2500));
+      const res = await Promise.race([fresh.catch(() => undefined), timeout]);
+      if (res) return res;
+      const cached = await fromCache();
+      if (cached) { event.waitUntil(fresh.catch(() => {})); return cached; }
+      return fresh;
     }
-    try { return await fresh; }
-    catch (err) {
-      if (nav) {
-        const any = (await cache.keys()).find(r => /\.html?$|\/$/.test(new URL(r.url).pathname));
-        if (any) return cache.match(any);
-      }
-      throw err;
-    }
+    const hit = await fromCache();
+    if (hit) { event.waitUntil(fresh.catch(() => {})); return hit; }
+    return fresh;
   })());
 });
