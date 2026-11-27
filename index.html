@@ -317,7 +317,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
     <section class="card glass" id="quickCard">
       <div class="head"><h2>Ajouter pour aujourd'hui</h2></div>
       <label class="tog"><span><b>Heures de garde</b><small id="qGHint">Désactivé : ajout d'heures supplémentaires</small></span><input type="checkbox" role="switch" id="qG"><i></i></label>
-      <label class="tog sub2" id="qTRow" hidden><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la rémunération</small></span><input type="checkbox" role="switch" id="qT"><i></i></label>
+      <label class="tog sub2" id="qTRow" hidden><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la prime</small></span><input type="checkbox" role="switch" id="qT"><i></i></label>
       <div class="field" id="qStRow" hidden><span>Heure de début de la garde (facultatif)</span><div class="timerow"><input id="qSt" type="time" aria-label="Heure de début de la garde"><button class="clr" type="button" data-clr="qSt" aria-label="Effacer l'heure de début" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><button class="nowb" type="button" data-now="qSt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Maintenant</button></div></div>
       <div class="chips" id="quick"></div>
       <button class="pri" id="addBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="addLbl">Ajouter des heures</span></button>
@@ -344,7 +344,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
   <div id="stats">
     <div class="mnav glass">
       <button class="round" id="sPrevM" type="button" aria-label="Mois précédent"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
-      <div class="c"><div class="lab" id="sName"></div><div class="t" id="sTot"></div><div class="lab">Rémunération nette estimée</div><p class="hint warn" id="sHint" hidden></p></div>
+      <div class="c"><div class="lab" id="sName"></div><div class="t" id="sTot"></div><div class="lab">Prime nette estimée</div><p class="hint warn" id="sHint" hidden></p></div>
       <button class="round" id="sNextM" type="button" aria-label="Mois suivant"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
     </div>
     <div class="pay">
@@ -410,7 +410,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
   <div class="tabs glass">
     <a href="#accueil" data-tab="accueil" aria-label="Aperçu"><svg viewBox="0 0 24 24"><path d="M4 19V11M10 19V5M16 19v-6M22 19H2"/></svg><span>Aperçu</span></a>
     <a href="#historique" data-tab="historique" aria-label="Historique"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Historique</span></a>
-    <a href="#stats" data-tab="stats" aria-label="Rémunération"><svg viewBox="0 0 24 24"><path d="M17.5 6.5a6.5 6.5 0 1 0 0 11M4 10h9M4 14h9"/></svg><span>Rémunération</span></a>
+    <a href="#stats" data-tab="stats" aria-label="Prime"><svg viewBox="0 0 24 24"><path d="M17.5 6.5a6.5 6.5 0 1 0 0 11M4 10h9M4 14h9"/></svg><span>Prime</span></a>
     <a href="#parametres" data-tab="parametres" aria-label="Paramètres"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Paramètres</span></a>
   </div>
 </nav>
@@ -430,7 +430,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
     <div class="chips" id="presets"></div>
     <div id="fGSec" hidden>
       <h3 class="sh">Garde</h3>
-      <label class="tog"><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la rémunération</small></span><input type="checkbox" role="switch" id="fT"><i></i></label>
+      <label class="tog"><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la prime</small></span><input type="checkbox" role="switch" id="fT"><i></i></label>
     <div class="field"><span>Heure de début (facultatif)</span><div class="timerow"><input id="fSt" type="time" aria-label="Heure de début de la garde"><button class="clr" type="button" data-clr="fSt" aria-label="Effacer l'heure de début" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><button class="nowb" type="button" data-now="fSt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Maintenant</button></div></div>
     </div>
     <h3 class="sh">Détails</h3>
@@ -1488,7 +1488,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 35';
+const APP_VERSION = '2026-11-27 · 36';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
