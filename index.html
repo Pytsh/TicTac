@@ -371,6 +371,7 @@ body.lock{position:fixed;left:0;right:0;width:100%}
         <label class="field"><span>Taux d'imposition des gardes</span><span class="unit"><input id="rT" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><em>%</em></span></label>
         <label class="field"><span>Temps de trajet par garde</span><span class="unit"><input id="rTr" type="text" inputmode="numeric" placeholder="40" autocomplete="off"><em>min</em></span></label>
       </div>
+      <p class="hint">Le temps de trajet s'applique aux nouvelles gardes : celles déjà saisies gardent leur durée.</p>
     </section>
     <section class="card glass" aria-labelledby="wTitle">
       <h2 id="wTitle">Horaires habituels</h2>
@@ -465,7 +466,8 @@ const momentAt = d => d.getHours() < 18 ? 'midi' : 'soir';
 const MO = {midi: 'Midi', soir: 'Soir'};
 const hfmt = t => t.replace(':', ' h ');
 const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-const trMin = a => a.filter(e => e.trajet).length * TRAJET;
+/* Chaque garde garde la durée de trajet en vigueur au moment de sa saisie (champ tr) */
+const trMin = a => a.reduce((t, e) => t + (e.trajet ? e.tr : 0), 0);
 const splitHTML = a => { const g = sum(a.filter(isG)), n = sum(a) - g;
   const t = trMin(a);
   return `<span><i class="n"></i>Normales <b>${esc(fmt(n))}</b></span><span><i class="g"></i>Garde <b>${esc(fmt(g))}</b></span>${t ? `<span><i class="t"></i>Trajets <b>${esc(fmt(t))}</b></span>` : ''}`; };
@@ -491,7 +493,7 @@ const clean = (id, o) => {
   if (!isFinite(min) || min <= 0 || min > 1440) return null;
   const g = o.type === 'garde', at = Number(o.at) || 0;
   const moment = g ? '' : (o.moment === 'midi' || o.moment === 'soir' ? o.moment : (at > 1e12 ? momentAt(new Date(at)) : ''));
-  return {id, date: o.date, min, moment, type: o.type === 'garde' ? 'garde' : 'normal', trajet: o.type === 'garde' && o.trajet === true, start: o.type === 'garde' && typeof o.start === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.start) ? o.start : '', note: typeof o.note === 'string' ? o.note.slice(0, 200) : '', at: Number(o.at) || 0};
+  return {id, date: o.date, min, moment, type: o.type === 'garde' ? 'garde' : 'normal', trajet: o.type === 'garde' && o.trajet === true, tr: o.type === 'garde' && o.trajet === true ? (parseTrajet(String(o.tr ?? '')) || TRAJET_DEF) : 0, start: o.type === 'garde' && typeof o.start === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.start) ? o.start : '', note: typeof o.note === 'string' ? o.note.slice(0, 200) : '', at: Number(o.at) || 0};
 };
 const newId = () => 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const saveLocal = () => lsSet(LS, JSON.stringify([...items.values()]));
@@ -528,7 +530,7 @@ function status(msg, warn) {
 function rowHTML(e, withDate) {
   const d = withDate ? `<em>${esc(cap(F({weekday: 'short', day: 'numeric'}).format(pd(e.date))))}</em>` : '';
   const g = isG(e);
-  return `<div class="row"><button class="rowb" type="button" data-edit="${esc(e.id)}" aria-label="${esc(fmt(e.min))}, ${typeLbl(g)}${e.moment ? `, ${e.moment}` : ''}${e.start ? `, début à ${esc(hfmt(e.start))}` : ''}${e.trajet ? `, plus ${TRAJET} minutes de trajet` : ''}"><i class="dot ${g ? 'g' : 'n'}"></i><b>${esc(fmt(e.min))}</b><span class="note">${e.moment ? `<span class="stt">${MO[e.moment]}</span>` : ''}${e.start ? `<span class="stt">${esc(hfmt(e.start))}</span>` : ''}${e.trajet ? `<span class="car" title="Trajet de ${TRAJET} min inclus">${I.car}</span>` : ''}${d}${esc(e.note) || (withDate || e.trajet || e.start || e.moment ? '' : 'Sans note')}</span>${I.chev}</button><button class="ico" type="button" data-del="${esc(e.id)}" aria-label="Supprimer l'entrée de ${esc(fmt(e.min))}">${I.trash}</button></div>`;
+  return `<div class="row"><button class="rowb" type="button" data-edit="${esc(e.id)}" aria-label="${esc(fmt(e.min))}, ${typeLbl(g)}${e.moment ? `, ${e.moment}` : ''}${e.start ? `, début à ${esc(hfmt(e.start))}` : ''}${e.trajet ? `, plus ${e.tr} minutes de trajet` : ''}"><i class="dot ${g ? 'g' : 'n'}"></i><b>${esc(fmt(e.min))}</b><span class="note">${e.moment ? `<span class="stt">${MO[e.moment]}</span>` : ''}${e.start ? `<span class="stt">${esc(hfmt(e.start))}</span>` : ''}${e.trajet ? `<span class="car" title="Trajet de ${esc(fmt(e.tr))} inclus">${I.car}</span>` : ''}${d}${esc(e.note) || (withDate || e.trajet || e.start || e.moment ? '' : 'Sans note')}</span>${I.chev}</button><button class="ico" type="button" data-del="${esc(e.id)}" aria-label="Supprimer l'entrée de ${esc(fmt(e.min))}">${I.trash}</button></div>`;
 }
 const sortDesc = (a, b) => b.date.localeCompare(a.date) || b.at - a.at;
 
@@ -615,7 +617,7 @@ $('#rTr').addEventListener('input', () => {
   el.setAttribute('aria-invalid', String(v === null && el.value.trim() !== ''));
   if (v === null) return;
   TRAJET = v; if (lsSet(LS_TRAJET, String(v))) askPersist();
-  paintTrajet(); render(); if ($('#scrim').classList.contains('open')) paint();
+  paintTrajet(); if ($('#scrim').classList.contains('open')) paint();
 });
 $('#rTr').addEventListener('blur', paintTrajet);
 function renderStats() {
@@ -633,7 +635,8 @@ function renderStats() {
   $('#pNr').textContent = rates.rn === null ? 'À renseigner' : `${eur.format(rn)} / h`;
   $('#pNn').textContent = eur.format(netN);
   $('#pGh').textContent = fmt(gMin);
-  $('#pGtr').textContent = nTr ? `${fmt(tMin)} (${nTr} × ${fmt(TRAJET)})` : 'Aucun';
+  const trs = [...new Set(inM.filter(e => e.trajet).map(e => e.tr))];
+  $('#pGtr').textContent = nTr ? (trs.length === 1 ? `${fmt(tMin)} (${nTr} × ${fmt(trs[0])})` : `${fmt(tMin)} (${nTr} trajets)`) : 'Aucun';
   $('#pGr').textContent = rates.rg === null ? 'À renseigner' : `${eur.format(rg)} / h`;
   $('#pGb').textContent = eur.format(brutG);
   $('#pGtL').textContent = rates.tx === null ? 'Impôt (taux à renseigner)' : `Impôt (${num.format(tx)} %)`;
@@ -690,7 +693,7 @@ function quickAdd(min) {
   const g = qG.checked;
   const tr = g && qT.checked;
   const st = g ? qSt.value : '';
-  const e = {id: newId(), date: today(), min, type: g ? 'garde' : 'normal', trajet: tr, start: st, moment: g ? '' : momentAt(new Date()), note: '', at: Date.now()};
+  const e = {id: newId(), date: today(), min, type: g ? 'garde' : 'normal', trajet: tr, tr: tr ? TRAJET : 0, start: st, moment: g ? '' : momentAt(new Date()), note: '', at: Date.now()};
   if (st) { qSt.value = ''; paintClr(); }
   put(e).then(() => toast(`+${fmt(min)} ${g ? 'de garde ' : ''}${tr ? '+ trajet ' : ''}ajoutées aujourd'hui`, () => del(e.id).catch(fail))).catch(fail);
 }
@@ -708,7 +711,7 @@ function setTotal(t) {
 }
 function paint() {
   const t = total(), p = $('#sPrev');
-  p.innerHTML = esc(t ? fmt(t) : '0 min') + (t && fIsG() && fT.checked ? `<span class="pcar">${I.car}+${esc(fmt(TRAJET))}</span>` : '');
+  p.innerHTML = esc(t ? fmt(t) : '0 min') + (t && fIsG() && fT.checked ? `<span class="pcar">${I.car}+${esc(fmt(editing && editing.trajet ? editing.tr : TRAJET))}</span>` : '');
   p.classList.toggle('bad', !t);
   document.querySelectorAll('[data-p]').forEach(b => b.classList.toggle('sel', Number(b.dataset.p) === t));
 }
@@ -752,7 +755,7 @@ $('#sheet').addEventListener('submit', ev => {
   const t = total(), d = $('#fDate').value;
   if (!t) { $('#sPrev').textContent = 'Indiquez une durée'; $('#sPrev').classList.add('bad'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { $('#fDate').focus(); return; }
-  const e = {id: editing ? editing.id : newId(), date: d, min: t, type: fIsG() ? 'garde' : 'normal', trajet: fIsG() && fT.checked, start: fIsG() ? fSt.value : '', moment: fIsG() ? '' : fKind, note: $('#fNote').value.trim().slice(0, 200), at: editing ? editing.at : Date.now()};
+  const e = {id: editing ? editing.id : newId(), date: d, min: t, type: fIsG() ? 'garde' : 'normal', trajet: fIsG() && fT.checked, tr: fIsG() && fT.checked ? (editing && editing.trajet ? editing.tr : TRAJET) : 0, start: fIsG() ? fSt.value : '', moment: fIsG() ? '' : fKind, note: $('#fNote').value.trim().slice(0, 200), at: editing ? editing.at : Date.now()};
   const was = editing;
   if (!was) { lsSet('heures-sup-last', String(t)); if (e.type === 'garde' && qSt.value) { qSt.value = ''; paintClr(); } }
   closeSheet();
@@ -1168,7 +1171,7 @@ function exportPDF(k) {
       const by = y2 + 15;
       doc.text(c2[0] + 8, by, fmt(e.min), {size: S, bold: true});
       doc.text(c2[1] + 8, by, e.start ? tFmt(Number(e.start.slice(0, 2)) * 60 + Number(e.start.slice(3))) : '–', {size: S, color: e.start ? ink : mut});
-      doc.text(c2[2] + 8, by, e.trajet ? fmt(TRAJET) : '–', {size: S, color: e.trajet ? ink : mut});
+      doc.text(c2[2] + 8, by, e.trajet ? fmt(e.tr) : '–', {size: S, color: e.trajet ? ink : mut});
       lines.forEach((ln, i) => doc.text(c2[3] + 8, by + i * 12, ln, {size: S, color: e.note ? ink : mut}));
       y2 += h; doc.line(L, y2, R, y2);
     });
@@ -1288,7 +1291,7 @@ function paintBk() {
 $('#bkExp').addEventListener('click', () => {
   const data = {
     app: 'TicTac', format: 1, exportedAt: new Date().toISOString(),
-    entries: [...items.values()].sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at).map(({id, date, min, type, moment, trajet, start, note, at}) => ({id, date, min, type, moment, trajet, start, note, at})),
+    entries: [...items.values()].sort((a, b) => a.date.localeCompare(b.date) || a.at - b.at).map(({id, date, min, type, moment, trajet, tr, start, note, at}) => ({id, date, min, type, moment, trajet, tr, start, note, at})),
     rates: {rn: rates.rn, rg: rates.rg, tx: rates.tx},
     horaires: hours,
     mois: monthMarks,
@@ -1332,7 +1335,7 @@ window.addEventListener('storage', ev => {
   if (ev.key === LS_HOURS || ev.key === null) loadHours();
   if (ev.key === LS_MONTHS || ev.key === null) loadMonths();
   if (ev.key === LS_NAME || ev.key === null) loadName();
-  if (ev.key === LS_TRAJET || ev.key === null) { loadTrajet(); render(); }
+  if (ev.key === LS_TRAJET || ev.key === null) loadTrajet();
 });
 
 /* ---------- Application installable et hors ligne ---------- */
