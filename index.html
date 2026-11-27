@@ -280,6 +280,8 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 @supports (-webkit-touch-callout:none){.field input[type=date],.field input[type=time]{line-height:48px}}
 .acts{position:sticky;bottom:-24px;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin:20px -20px -24px;padding:14px 20px calc(24px + var(--sab));background:color-mix(in srgb,var(--base) 78%,transparent);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border-top:1px solid var(--line)}
 .acts .pri{margin:0}
+/* Bouton Annuler des panneaux : fond plus opaque pour que le contenu ne transparaisse pas derrière */
+.acts .sec{background:light-dark(rgba(210,215,230,.96),rgba(50,54,78,.94))}
 .sec{min-height:54px;border-radius:999px;background:var(--track);font-weight:600}
 .toast{position:fixed;left:50%;bottom:calc(168px + var(--sab));z-index:20;display:flex;align-items:center;gap:6px;padding:6px 6px 6px 18px;border-radius:999px;max-width:calc(100% - 32px);transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:.25s}
 .toast.show{transform:translate(-50%,0);opacity:1;pointer-events:auto}
@@ -1482,7 +1484,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 31';
+const APP_VERSION = '2026-11-27 · 32';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
