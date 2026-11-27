@@ -1122,7 +1122,7 @@ const monthHolidays = k => holidaysFR(Number(k.slice(0, 4))).filter(h => mk(h.da
 const XST = ['ast', 'cong', 'fer'];
 const XS = {
   ast: {hint: 'Touchez les jours où vous avez été d\'astreinte. Touchez à nouveau pour annuler.', back: 'Annuler', next: 'Suivant'},
-  cong: {hint: 'Touchez les jours non travaillés pour cause de congés. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Suivant'},
+  cong: {hint: 'Touchez les jours où vous avez été en congés. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Suivant'},
   fer: {hint: 'Touchez les jours fériés du mois. Touchez à nouveau pour annuler. Un jour férié l\'emporte sur un congé dans le PDF.', back: 'Retour', next: 'Générer le PDF'}
 };
 function paintX() {
