@@ -108,6 +108,7 @@ section.card{padding:22px;margin-bottom:16px}
 /* Panneau d'ajout/modification en mode Garde : durées rapides en orange, comme sur l'accueil */
 #sheet.garde #presets .chip{color:var(--gInk);border-color:color-mix(in srgb,var(--g) 45%,var(--edge))}
 #sheet.garde #presets .chip.sel{background:var(--g);color:light-dark(#fff,#2b1600);border-color:transparent}
+#sheet.garde .acts .pri{background:var(--g);color:light-dark(#fff,#2b1600);box-shadow:inset 0 1px 1px rgba(255,255,255,.45),0 10px 24px -10px var(--g)}
 #quickCard.garde .pri{background:var(--g);box-shadow:inset 0 1px 1px rgba(255,255,255,.45),0 10px 24px -10px var(--g)}
 .head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -1481,7 +1482,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 30';
+const APP_VERSION = '2026-11-27 · 31';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
