@@ -570,7 +570,8 @@ function renderHome() {
   $('#hBars').setAttribute('aria-label', `Heures supplémentaires par jour en ${mName(cm)}`);
   $('#hTicks').innerHTML = `<span>1</span><span>${Math.ceil(dim / 2)}</span><span>${dim}</span>`;
   $('#quick').innerHTML = QUICK.map(q => `<button class="chip" type="button" data-q="${q}">${$('#qG').checked ? '' : '+'}${esc(fmt(q))}</button>`).join('');
-  const rec = inM.sort(sortDesc).slice(0, 5);
+  /* Par date, de la plus récente à la plus ancienne ; même ordre que l'Historique à l'intérieur d'une journée */
+  const rec = inM.sort((a, b) => b.date.localeCompare(a.date) || dayOrder(a, b)).slice(0, 5);
   $('#recent').innerHTML = rec.length ? rec.map(e => rowHTML(e, true)).join('') : '<div class="empty">Aucune heure supplémentaire ce mois-ci pour l\'instant.<br>Touchez un raccourci ci-dessus pour commencer.</div>';
 }
 
@@ -1487,7 +1488,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 34';
+const APP_VERSION = '2026-11-27 · 35';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
