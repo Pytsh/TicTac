@@ -135,7 +135,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .mnav{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;padding:14px;margin-bottom:12px}
 .mnav .c{text-align:center}
 .mnav .t{font-size:clamp(30px,8vw,40px);font-weight:700;letter-spacing:-.03em;line-height:1.15;font-variant-numeric:tabular-nums}
-.export{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;border-radius:999px;margin-bottom:12px;font-weight:600;font-size:16px;color:var(--acc);transition:transform .12s}
+.export{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:50px;border-radius:999px;margin-bottom:12px;font-weight:600;font-size:16px;color:var(--ink);transition:transform .12s}
 .export:active{transform:scale(.98)}
 .export[hidden]{display:none}
 .seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2px;padding:4px;border-radius:999px;margin-bottom:12px}
@@ -1484,7 +1484,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 32';
+const APP_VERSION = '2026-11-27 · 33';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
