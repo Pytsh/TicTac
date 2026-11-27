@@ -1123,7 +1123,7 @@ const XST = ['ast', 'cong', 'fer'];
 const XS = {
   ast: {hint: 'Touchez les jours où vous avez été d\'astreinte. Touchez à nouveau pour annuler.', back: 'Annuler', next: 'Suivant'},
   cong: {hint: 'Touchez les jours où vous avez été en congés. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Suivant'},
-  fer: {hint: 'Touchez les jours fériés du mois. Touchez à nouveau pour annuler. Un jour férié l\'emporte sur un congé dans le PDF.', back: 'Retour', next: 'Générer le PDF'}
+  fer: {hint: 'Touchez les jours fériés du mois. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Générer le PDF'}
 };
 function paintX() {
   const k = xMonth, mm = monthMarks[k] || {ast: [], cong: [], fer: []}, A = new Set(mm.ast), C = new Set(mm.cong), FR = new Set(mm.fer || []), SET = {ast: A, cong: C, fer: FR};
@@ -1132,9 +1132,7 @@ function paintX() {
   const hols = monthHolidays(k), HOL = new Map(hols.map(x => [x.date, x.name]));
   $('#xTitle').textContent = `Exporter ${mName(k).toLowerCase()}`;
   document.querySelectorAll('[data-xs]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.xs === xStep)));
-  $('#xHint').textContent = xStep !== 'fer' ? XS[xStep].hint : (hols.length
-    ? `Jours fériés officiels présélectionnés : ${hols.map(x => `${x.name} (${F({weekday: 'short', day: 'numeric'}).format(pd(x.date))})`).join(', ')}. Touchez un jour pour l'ajouter ou le retirer. Un jour férié l'emporte sur un congé dans le PDF.`
-    : 'Aucun jour férié officiel ce mois-ci. Touchez un jour pour en ajouter un. Un jour férié l\'emporte sur un congé dans le PDF.');
+  $('#xHint').textContent = XS[xStep].hint;
   let h = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(w => `<div class="wd" aria-hidden="true">${w}</div>`).join('') + '<div></div>'.repeat(first);
   for (let d = 1; d <= dim; d++) {
     const date = `${k}-${pad(d)}`, dow = new Date(y, m - 1, d).getDay(), on = SET[xStep].has(date);
