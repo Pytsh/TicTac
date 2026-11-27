@@ -435,6 +435,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 
 <div class="scrim" id="xScrim" aria-hidden="true">
   <div class="sheet glass" id="xSheet" role="dialog" aria-modal="true" aria-labelledby="xTitle">
+    <div class="grip" aria-hidden="true"><div class="grab"></div></div>
     <div class="shead xhead"><h2 id="xTitle" tabindex="-1">Exporter</h2><button class="round" type="button" id="xClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="seg kind xsteps" role="group" aria-label="Étape"><button type="button" data-xs="ast"><i class="dot as"></i>1. Astreintes</button><button type="button" data-xs="cong"><i class="dot cc"></i>2. Congés</button><button type="button" data-xs="fer"><i class="dot fr"></i>3. Fériés</button></div>
     <p class="hint" id="xHint"></p>
@@ -837,41 +838,41 @@ fM.addEventListener('change', () => setTotal(total()));
 $('#sClose').addEventListener('click', closeSheet);
 $('#sCancel').addEventListener('click', closeSheet);
 $('#sDel').addEventListener('click', () => { const id = editing && editing.id; closeSheet(); if (id) remove(id); });
-/* Glisser la poignée vers le bas pour fermer */
-const sheetEl = $('#sheet'), scrimEl = $('#scrim');
+/* Glisser la poignée (ou l'en-tête) vers le bas pour fermer : panneau d'ajout/modification et panneau d'export */
 let drag = null;
-function dragStart(ev) {
+function dragStart(ev, sheet, scrim, close) {
   if (ev.button > 0 || ev.target.closest('button,input')) return;
-  drag = {id: ev.pointerId, y: ev.clientY, t: performance.now(), dy: 0, v: 0};
-  sheetEl.style.transition = 'none';
+  drag = {id: ev.pointerId, y: ev.clientY, t: performance.now(), dy: 0, v: 0, sheet, scrim, close};
+  sheet.style.transition = 'none';
   try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
 }
 function dragMove(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
-  const now = performance.now();
+  const now = performance.now(), {sheet, scrim} = drag;
   let dy = ev.clientY - drag.y;
   if (dy < 0) dy = -Math.sqrt(-dy) * 2;
   drag.v = (dy - drag.dy) / Math.max(1, now - drag.t); drag.t = now; drag.dy = dy;
-  sheetEl.style.transform = `translateY(${dy}px)`;
-  scrimEl.style.setProperty('--k', String(Math.max(0, 1 - Math.max(0, dy) / (sheetEl.offsetHeight || 500))));
+  sheet.style.transform = `translateY(${dy}px)`;
+  scrim.style.setProperty('--k', String(Math.max(0, 1 - Math.max(0, dy) / (sheet.offsetHeight || 500))));
 }
 function dragEnd(ev) {
   if (!drag || ev.pointerId !== drag.id) return;
-  const {dy, v} = drag; drag = null;
-  if (dy > Math.min(140, sheetEl.offsetHeight * 0.3) || (v > 0.5 && dy > 20)) {
-    scrimEl.style.setProperty('--k', '0');
-    closeSheet();
+  const {dy, v, sheet, scrim, close} = drag; drag = null;
+  if (dy > Math.min(140, sheet.offsetHeight * 0.3) || (v > 0.5 && dy > 20)) {
+    scrim.style.setProperty('--k', '0');
+    close();
   } else {
-    scrimEl.style.removeProperty('--k');
-    animY(sheetEl, dy, 0, 220, easeOut, () => { sheetEl.style.transform = ''; sheetEl.style.transition = ''; });
+    scrim.style.removeProperty('--k');
+    animY(sheet, dy, 0, 220, easeOut, () => { sheet.style.transform = ''; sheet.style.transition = ''; });
   }
 }
-['#grip', '.shead'].forEach(sel => {
-  const el = $(sel);
-  el.addEventListener('pointerdown', dragStart);
-  el.addEventListener('pointermove', dragMove);
-  el.addEventListener('pointerup', dragEnd);
-  el.addEventListener('pointercancel', dragEnd);
+[[$('#sheet'), $('#scrim'), () => closeSheet()], [$('#xSheet'), $('#xScrim'), () => closeExport()]].forEach(([sheet, scrim, close]) => {
+  sheet.querySelectorAll('.grip, .shead').forEach(el => {
+    el.addEventListener('pointerdown', ev => dragStart(ev, sheet, scrim, close));
+    el.addEventListener('pointermove', dragMove);
+    el.addEventListener('pointerup', dragEnd);
+    el.addEventListener('pointercancel', dragEnd);
+  });
 });
 $('#scrim').addEventListener('click', ev => { if (ev.target === ev.currentTarget) closeSheet(); });
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('#scrim').classList.contains('open')) closeSheet(); });
@@ -1467,7 +1468,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 23';
+const APP_VERSION = '2026-11-27 · 24';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
