@@ -794,10 +794,8 @@ function closeScrim(scrim) {
     if (!scrim.classList.contains('open')) scrim.classList.remove('warm');
   });
 }
-document.addEventListener('pointerdown', ev => {
-  const b = ev.target.closest('#fab,#addBtn,[data-edit],#exportBtn,#sDel');
-  if (b) warmScrim(b.id === 'exportBtn' ? $('#xScrim') : $('#scrim'));
-}, {passive: true});
+/* Pas de « préchauffage » au moment où le doigt se pose : sur iPhone, rendre un élément visible pendant le toucher
+   fait croire à Safari qu'il s'agit d'un menu au survol, et il annule le clic (il fallait toucher deux fois). */
 /* Pas de défilement de la page derrière le voile (molette, trackpad, anciens iOS) */
 document.querySelectorAll('.scrim').forEach(sc => {
   const stop = ev => { if (!ev.target.closest('.sheet')) ev.preventDefault(); };
@@ -1452,7 +1450,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 21';
+const APP_VERSION = '2026-11-27 · 22';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
