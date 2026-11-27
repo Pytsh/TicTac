@@ -1130,7 +1130,6 @@ function exportPDF(k) {
   doc.text(c1[2] + 8, yy + 16, fmt(totN), {size: 10, bold: true});
   const tt = [aN && plural(aN, 'astreinte'), gN && plural(gN, 'garde')].filter(Boolean).join(' + ') || '–';
   doc.text(c1[3] + 8, yy + 16, tt, {size: fit(tt, R - c1[3] - 12, 10, true), bold: true});
-  doc.text(L, yy + 42, 'Les heures de garde ne sont pas comptées dans la colonne Heures sup : elles sont détaillées en page 2.', {size: 8.5, color: mut});
   signBlock();
   /* Page 2 : résumé des gardes */
   const gs = es.filter(isG).sort((a, b) => a.date.localeCompare(b.date) || (a.start || '99').localeCompare(b.start || '99') || a.at - b.at);
