@@ -305,7 +305,7 @@ body.lock{position:fixed;left:0;right:0;width:100%}
     <section class="card glass" id="quickCard">
       <div class="head"><h2>Ajouter pour aujourd'hui</h2></div>
       <label class="tog"><span><b>Heures de garde</b><small id="qGHint">Désactivé : ajout d'heures supplémentaires</small></span><input type="checkbox" role="switch" id="qG"><i></i></label>
-      <label class="tog sub2" id="qTRow" hidden><span><b>Ajouter le trajet</b><small>+40 min, compté dans la rémunération</small></span><input type="checkbox" role="switch" id="qT"><i></i></label>
+      <label class="tog sub2" id="qTRow" hidden><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la rémunération</small></span><input type="checkbox" role="switch" id="qT"><i></i></label>
       <div class="field" id="qStRow" hidden><span>Heure de début de la garde (facultatif)</span><div class="timerow"><input id="qSt" type="time" aria-label="Heure de début de la garde"><button class="clr" type="button" data-clr="qSt" aria-label="Effacer l'heure de début" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><button class="nowb" type="button" data-now="qSt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Maintenant</button></div></div>
       <div class="chips" id="quick"></div>
       <button class="pri" id="addBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span id="addLbl">Ajouter des heures</span></button>
@@ -363,12 +363,13 @@ body.lock{position:fixed;left:0;right:0;width:100%}
       </div>
     </section>
     <section class="card glass" aria-labelledby="rTitle">
-      <h2 id="rTitle">Tarifs et imposition</h2>
+      <h2 id="rTitle">Tarifs, trajet et imposition</h2>
       <p class="hint" id="rSync">Enregistrés sur cet appareil.</p>
       <div class="fields">
         <label class="field"><span>Tarif heure normale</span><span class="unit"><input id="rN" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"><em>€ / h</em></span></label>
         <label class="field"><span>Tarif heure de garde</span><span class="unit"><input id="rG" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off"><em>€ / h</em></span></label>
         <label class="field"><span>Taux d'imposition des gardes</span><span class="unit"><input id="rT" type="text" inputmode="decimal" placeholder="0" autocomplete="off"><em>%</em></span></label>
+        <label class="field"><span>Temps de trajet par garde</span><span class="unit"><input id="rTr" type="text" inputmode="numeric" placeholder="40" autocomplete="off"><em>min</em></span></label>
       </div>
     </section>
     <section class="card glass" aria-labelledby="wTitle">
@@ -415,7 +416,7 @@ body.lock{position:fixed;left:0;right:0;width:100%}
     <div class="chips" id="presets"></div>
     <div id="fGSec" hidden>
       <h3 class="sh">Garde</h3>
-      <label class="tog"><span><b>Ajouter le trajet</b><small>+40 min, comptées dans la rémunération</small></span><input type="checkbox" role="switch" id="fT"><i></i></label>
+      <label class="tog"><span><b>Ajouter le trajet</b><small>+<span class="trv">40 min</span>, compté dans la rémunération</small></span><input type="checkbox" role="switch" id="fT"><i></i></label>
     <div class="field"><span>Heure de début (facultatif)</span><div class="timerow"><input id="fSt" type="time" aria-label="Heure de début de la garde"><button class="clr" type="button" data-clr="fSt" aria-label="Effacer l'heure de début" hidden><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><button class="nowb" type="button" data-now="fSt"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Maintenant</button></div></div>
     </div>
     <h3 class="sh">Détails</h3>
@@ -456,7 +457,10 @@ const mName = k => cap(F({month: 'long', year: 'numeric'}).format(pd(k)));
 const mShort = k => cap(F({month: 'short'}).format(pd(k))) + ' ' + k.slice(0, 4);
 const sum = a => a.reduce((t, e) => t + e.min, 0);
 const isG = e => e.type === 'garde';
-const TRAJET = 40;
+/* Temps de trajet ajouté aux gardes (paramétrable, 40 min par défaut) */
+const LS_TRAJET = 'tictac-trajet-min', TRAJET_DEF = 40;
+const parseTrajet = v => { const t = String(v ?? '').trim(); if (!/^\d{1,3}$/.test(t)) return null; const n = Number(t); return n >= 1 && n <= 600 ? n : null; };
+let TRAJET = TRAJET_DEF; /* valeur enregistrée chargée au démarrage (loadTrajet) */
 const momentAt = d => d.getHours() < 18 ? 'midi' : 'soir';
 const MO = {midi: 'Midi', soir: 'Soir'};
 const hfmt = t => t.replace(':', ' h ');
@@ -601,13 +605,26 @@ for (const k in RF) {
   });
   el.addEventListener('blur', fillRates);
 }
+function paintTrajet() {
+  document.querySelectorAll('.trv').forEach(el => { el.textContent = fmt(TRAJET); });
+  const el = $('#rTr'); if (document.activeElement !== el) el.value = String(TRAJET);
+}
+function loadTrajet() { TRAJET = parseTrajet(lsGet(LS_TRAJET)) || TRAJET_DEF; paintTrajet(); }
+$('#rTr').addEventListener('input', () => {
+  const el = $('#rTr'), v = parseTrajet(el.value);
+  el.setAttribute('aria-invalid', String(v === null && el.value.trim() !== ''));
+  if (v === null) return;
+  TRAJET = v; if (lsSet(LS_TRAJET, String(v))) askPersist();
+  paintTrajet(); render(); if ($('#scrim').classList.contains('open')) paint();
+});
+$('#rTr').addEventListener('blur', paintTrajet);
 function renderStats() {
   const cm = mk(today()); if (sm > cm) sm = cm;
   const inM = [...items.values()].filter(e => mk(e.date) === sm);
   const gMin = sum(inM.filter(isG)), nMin = sum(inM) - gMin;
   const rn = rates.rn ?? 0, rg = rates.rg ?? 0, tx = rates.tx ?? 0;
   const cents = x => Math.round(x * 100) / 100;
-  const tMin = trMin(inM), nTr = tMin / TRAJET;
+  const tMin = trMin(inM), nTr = inM.filter(e => e.trajet).length;
   const netN = cents(nMin / 60 * rn), brutG = cents((gMin + tMin) / 60 * rg), impG = cents(brutG * tx / 100), netG = cents(brutG - impG);
   $('#sName').textContent = mName(sm);
   $('#sTot').textContent = eur.format(netN + netG);
@@ -616,7 +633,7 @@ function renderStats() {
   $('#pNr').textContent = rates.rn === null ? 'À renseigner' : `${eur.format(rn)} / h`;
   $('#pNn').textContent = eur.format(netN);
   $('#pGh').textContent = fmt(gMin);
-  $('#pGtr').textContent = nTr ? `${fmt(tMin)} (${nTr} × ${TRAJET} min)` : 'Aucun';
+  $('#pGtr').textContent = nTr ? `${fmt(tMin)} (${nTr} × ${fmt(TRAJET)})` : 'Aucun';
   $('#pGr').textContent = rates.rg === null ? 'À renseigner' : `${eur.format(rg)} / h`;
   $('#pGb').textContent = eur.format(brutG);
   $('#pGtL').textContent = rates.tx === null ? 'Impôt (taux à renseigner)' : `Impôt (${num.format(tx)} %)`;
@@ -691,7 +708,7 @@ function setTotal(t) {
 }
 function paint() {
   const t = total(), p = $('#sPrev');
-  p.innerHTML = esc(t ? fmt(t) : '0 min') + (t && fIsG() && fT.checked ? `<span class="pcar">${I.car}+${TRAJET} min</span>` : '');
+  p.innerHTML = esc(t ? fmt(t) : '0 min') + (t && fIsG() && fT.checked ? `<span class="pcar">${I.car}+${esc(fmt(TRAJET))}</span>` : '');
   p.classList.toggle('bad', !t);
   document.querySelectorAll('[data-p]').forEach(b => b.classList.toggle('sel', Number(b.dataset.p) === t));
 }
@@ -1151,7 +1168,7 @@ function exportPDF(k) {
       const by = y2 + 15;
       doc.text(c2[0] + 8, by, fmt(e.min), {size: S, bold: true});
       doc.text(c2[1] + 8, by, e.start ? tFmt(Number(e.start.slice(0, 2)) * 60 + Number(e.start.slice(3))) : '–', {size: S, color: e.start ? ink : mut});
-      doc.text(c2[2] + 8, by, e.trajet ? `${TRAJET} min` : '–', {size: S, color: e.trajet ? ink : mut});
+      doc.text(c2[2] + 8, by, e.trajet ? fmt(TRAJET) : '–', {size: S, color: e.trajet ? ink : mut});
       lines.forEach((ln, i) => doc.text(c2[3] + 8, by + i * 12, ln, {size: S, color: e.note ? ink : mut}));
       y2 += h; doc.line(L, y2, R, y2);
     });
@@ -1275,7 +1292,8 @@ $('#bkExp').addEventListener('click', () => {
     rates: {rn: rates.rn, rg: rates.rg, tx: rates.tx},
     horaires: hours,
     mois: monthMarks,
-    nom: userName()
+    nom: userName(),
+    trajet: TRAJET
   };
   const bytes = new TextEncoder().encode(JSON.stringify(data, null, 1));
   saveFile(bytes, `TicTac-sauvegarde-${today()}.json`, 'application/json').then(r => {
@@ -1294,6 +1312,7 @@ $('#bkFile').addEventListener('change', async () => {
   const prevItems = new Map(items), prevRates = {...rates}, prevHours = JSON.parse(JSON.stringify(hours)), prevMonths = JSON.parse(JSON.stringify(monthMarks));
   let n = 0;
   list.forEach(x => { const c = clean(x && typeof x.id === 'string' && x.id ? x.id.slice(0, 64) : newId(), x); if (c) { items.set(c.id, c); n++; } });
+  if (o && !Array.isArray(o) && parseTrajet(o.trajet)) { lsSet(LS_TRAJET, String(parseTrajet(o.trajet))); loadTrajet(); }
   if (o && !Array.isArray(o) && typeof o.nom === 'string' && o.nom.trim()) { lsSet(LS_NAME, o.nom.trim().slice(0, 60)); loadName(); }
   if (o && !Array.isArray(o) && o.mois) { const mo = cleanMonths(o.mois); for (const k in mo) monthMarks[k] = mo[k]; saveMonths(); }
   if (o && !Array.isArray(o) && o.horaires) { hours = cleanHours(o.horaires); saveHours(); renderDays(); }
@@ -1313,6 +1332,7 @@ window.addEventListener('storage', ev => {
   if (ev.key === LS_HOURS || ev.key === null) loadHours();
   if (ev.key === LS_MONTHS || ev.key === null) loadMonths();
   if (ev.key === LS_NAME || ev.key === null) loadName();
+  if (ev.key === LS_TRAJET || ev.key === null) { loadTrajet(); render(); }
 });
 
 /* ---------- Application installable et hors ligne ---------- */
@@ -1373,6 +1393,7 @@ $('#instBtn').addEventListener('click', async () => {
 /* ---------- Démarrage ---------- */
 loadLocal();
 loadRates();
+loadTrajet();
 loadHours();
 loadMonths();
 loadName();
