@@ -268,6 +268,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .field span{display:block;font-size:13px;color:var(--mut);margin:0 0 6px 12px}
 .field input{width:100%;min-height:50px;padding:0 16px;border-radius:16px;border:1px solid var(--line);background:var(--track);font-size:16px}
 .field input{-webkit-appearance:none;appearance:none;display:block;height:50px;margin:0;color:var(--ink);font-family:inherit;line-height:normal;background-clip:padding-box}
+.field textarea{-webkit-appearance:none;appearance:none;display:block;width:100%;min-height:76px;max-height:220px;margin:0;padding:13px 16px;border-radius:16px;border:1px solid var(--line);background:var(--track);background-clip:padding-box;color:var(--ink);font:inherit;font-size:16px;line-height:1.45;resize:none;overflow-y:auto}
 .field input[type=date],.field input[type=time]{display:flex;align-items:center;text-align:left}
 .field input::-webkit-date-and-time-value{text-align:left;margin:0;min-height:1.4em;line-height:1.4em}
 .field input::-webkit-datetime-edit{padding:0;line-height:1.4em}
@@ -428,7 +429,7 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
     </div>
     <h3 class="sh">Détails</h3>
     <label class="field"><span>Date</span><input id="fDate" type="date" required></label>
-    <label class="field"><span>Note (facultatif)</span><input id="fNote" type="text" maxlength="200" placeholder="Ex. : clôture mensuelle, astreinte…" autocomplete="off"></label>
+    <label class="field"><span>Note (facultatif)</span><textarea id="fNote" rows="2" maxlength="200" placeholder="Ex. : clôture mensuelle, astreinte…" autocomplete="off" enterkeyhint="enter"></textarea></label>
     <div class="acts"><button class="sec" type="button" id="sCancel">Annuler</button><button class="pri" type="submit">Enregistrer</button></div>
   </form>
 </div>
@@ -723,6 +724,10 @@ function paint() {
 }
 $('#presets').innerHTML = [15, 20, 30, 40, 45, 60].map(q => `<button class="chip" type="button" data-p="${q}">${esc(fmt(q))}</button>`).join('');
 
+/* Note sur plusieurs lignes : Entrée fait un retour à la ligne (une zone de texte n'envoie jamais le formulaire),
+   et la zone s'agrandit avec son contenu */
+const fitNote = () => { const t = $('#fNote'); t.style.height = 'auto'; t.style.height = Math.min(220, t.scrollHeight + 2) + 'px'; };
+$('#fNote').addEventListener('input', fitNote);
 function openSheet(e) {
   editing = e || null;
   clearTimeout(toastT); $('#toast').classList.remove('show');
@@ -731,7 +736,7 @@ function openSheet(e) {
   setTotal(e ? e.min : (Number(lsGet('heures-sup-last')) || 60));
   $('#fDate').value = e ? e.date : today();
   $('#fDate').max = today();
-  $('#fNote').value = e ? e.note : '';
+  $('#fNote').value = e ? e.note : ''; requestAnimationFrame(fitNote);
   fKind = e ? (isG(e) ? 'garde' : (e.moment || momentAt(new Date()))) : (qG.checked ? 'garde' : momentAt(new Date()));
   fT.checked = e ? !!e.trajet : qT.checked;
   fSt.value = e ? (e.start || '') : (qG.checked ? qSt.value : '');
@@ -812,11 +817,13 @@ document.querySelectorAll('.scrim').forEach(sc => {
     const sheet = ev.target.closest('.sheet');
     if (!sheet || ev.touches.length > 1) { ev.preventDefault(); return; }
     const y = ev.touches[0].clientY, dy = ty - y; ty = y;
-    if (dy !== 0 && !sheetCanScroll(sheet, dy)) ev.preventDefault();
+    const ta = ev.target.closest('textarea');
+    if (dy !== 0 && !(ta && sheetCanScroll(ta, dy)) && !sheetCanScroll(sheet, dy)) ev.preventDefault();
   }, {passive: false});
   sc.addEventListener('wheel', ev => {
     const sheet = ev.target.closest('.sheet');
-    if (!sheet || !sheetCanScroll(sheet, ev.deltaY)) ev.preventDefault();
+    const ta = ev.target.closest('textarea');
+    if (!sheet || (!(ta && sheetCanScroll(ta, ev.deltaY)) && !sheetCanScroll(sheet, ev.deltaY))) ev.preventDefault();
   }, {passive: false});
 });
 function closeSheet() { closeScrim($('#scrim')); editing = null; }
@@ -826,7 +833,7 @@ $('#sheet').addEventListener('submit', ev => {
   const t = total(), d = $('#fDate').value;
   if (!t) { $('#sPrev').textContent = 'Indiquez une durée'; $('#sPrev').classList.add('bad'); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) { $('#fDate').focus(); return; }
-  const e = {id: editing ? editing.id : newId(), date: d, min: t, type: fIsG() ? 'garde' : 'normal', trajet: fIsG() && fT.checked, tr: fIsG() && fT.checked ? (editing && editing.trajet ? editing.tr : TRAJET) : 0, start: fIsG() ? fSt.value : '', moment: fIsG() ? '' : fKind, note: $('#fNote').value.trim().slice(0, 200), at: editing ? editing.at : Date.now()};
+  const e = {id: editing ? editing.id : newId(), date: d, min: t, type: fIsG() ? 'garde' : 'normal', trajet: fIsG() && fT.checked, tr: fIsG() && fT.checked ? (editing && editing.trajet ? editing.tr : TRAJET) : 0, start: fIsG() ? fSt.value : '', moment: fIsG() ? '' : fKind, note: $('#fNote').value.replace(/\r\n?/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 200), at: editing ? editing.at : Date.now()};
   const was = editing;
   if (!was) { lsSet('heures-sup-last', String(t)); if (e.type === 'garde' && qSt.value) { qSt.value = ''; paintClr(); } }
   closeSheet();
@@ -1225,7 +1232,7 @@ function exportPDF(k) {
   const days = [...new Set(gs.map(e => e.date))];
   days.forEach(date => {
     const de = gs.filter(e => e.date === date);
-    const rows = de.map(e => ({e, lines: wrapText(e.note || '–', noteW, S, false)}));
+    const rows = de.map(e => ({e, lines: e.note ? e.note.split('\n').flatMap(l => l.trim() ? wrapText(l, noteW, S, false) : ['']) : ['–']}));
     const need = 24 + rows.reduce((t, r) => t + r.lines.length * 12 + 9, 0);
     if (y2 + Math.min(need, 120) > doc.H - 60) y2 = head2(true);
     const dd = pd(date);
@@ -1465,7 +1472,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 26';
+const APP_VERSION = '2026-11-27 · 27';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
