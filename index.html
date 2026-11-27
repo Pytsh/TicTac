@@ -545,6 +545,9 @@ function rowHTML(e, withDate) {
   const g = isG(e);
   return `<div class="row"><button class="rowb" type="button" data-edit="${esc(e.id)}" aria-label="${esc(fmt(e.min))}, ${typeLbl(g)}${e.moment ? `, ${e.moment}` : ''}${e.start ? `, début à ${esc(hfmt(e.start))}` : ''}${e.trajet ? `, plus ${e.tr} minutes de trajet` : ''}"><i class="dot ${g ? 'g' : 'n'}"></i><b>${esc(fmt(e.min))}</b><span class="note">${e.moment ? `<span class="stt">${MO[e.moment]}</span>` : ''}${e.start ? `<span class="stt">${esc(hfmt(e.start))}</span>` : ''}${e.trajet ? `<span class="car" title="Trajet de ${esc(fmt(e.tr))} inclus">${I.car}</span>` : ''}${d}${esc(e.note) || (withDate || e.trajet || e.start || e.moment ? '' : 'Sans note')}</span>${I.chev}</button><button class="ico" type="button" data-del="${esc(e.id)}" aria-label="Supprimer l'entrée de ${esc(fmt(e.min))}">${I.trash}</button></div>`;
 }
+/* Ordre dans une journée : heures sup du midi, puis du soir, puis gardes par heure de début (sans heure : à la fin) */
+const dayRank = e => isG(e) ? (e.start ? 3 : 4) : e.moment === 'midi' ? 0 : e.moment === 'soir' ? 1 : 2;
+const dayOrder = (a, b) => dayRank(a) - dayRank(b) || (isG(a) && a.start && b.start ? a.start.localeCompare(b.start) : 0) || a.at - b.at;
 const sortDesc = (a, b) => b.date.localeCompare(a.date) || b.at - a.at;
 
 function renderHome() {
@@ -586,7 +589,7 @@ function renderHist() {
   $('#strip').innerHTML = months.map(k => `<button class="chip${k === hm ? ' sel' : ''}" type="button" data-month="${esc(k)}" aria-pressed="${k === hm}">${esc(mShort(k))}<small>${esc(fmt(sum(all.filter(e => mk(e.date) === k))))}</small></button>`).join('');
   const days = [...new Set(inM.map(e => e.date))];
   $('#groups').innerHTML = days.length ? days.map(d => {
-    const es = inM.filter(e => e.date === d);
+    const es = inM.filter(e => e.date === d).sort(dayOrder);
     return `<div class="dayh"><span>${esc(cap(F({weekday: 'long', day: 'numeric', month: 'long'}).format(pd(d))))}</span><b>${esc(fmt(sum(es)))}</b></div><div class="list glass">${es.map(e => rowHTML(e, false)).join('')}</div>`;
   }).join('') : `<div class="list glass"><div class="empty">${hf === 'all' ? 'Rien d\'enregistré' : hf === 'garde' ? 'Aucune heure de garde' : 'Aucune heure normale'} en ${esc(mName(hm).toLowerCase())}.</div></div>`;
   const sel = $('#strip .sel'); if (sel) sel.scrollIntoView({block: 'nearest', inline: 'nearest'});
@@ -1484,7 +1487,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 33';
+const APP_VERSION = '2026-11-27 · 34';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
