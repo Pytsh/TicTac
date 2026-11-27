@@ -1117,7 +1117,8 @@ function exportPDF(k) {
   const c2 = [L, L + 80, L + 150, L + 230], noteW = R - c2[3] - 16;
   const head2 = (cont) => {
     doc.page();
-    doc.text(L, 58, `Gardes – ${mt}${cont ? ' (suite)' : ''}`, {size: 18, bold: true});
+    const gtt = `Gardes – ${nm ? nm + ' – ' : ''}${mt}${cont ? ' (suite)' : ''}`;
+    doc.text(L, 58, gtt, {size: fitTitle(gtt, R - L), bold: true});
     let y2 = 78;
     if (!cont) {
       const gT = sum(gs), tT = trMin(gs);
@@ -1156,7 +1157,7 @@ function exportPDF(k) {
     });
   });
   /* Signature sur la dernière page des gardes (nouvelle page si la place manque) */
-  if (y2 > sigTop - 16) { doc.page(); doc.text(L, 58, `Gardes – ${mt} (suite)`, {size: 18, bold: true}); }
+  if (y2 > sigTop - 16) { doc.page(); const gtt = `Gardes – ${nm ? nm + ' – ' : ''}${mt} (suite)`; doc.text(L, 58, gtt, {size: fitTitle(gtt, R - L), bold: true}); }
   signBlock();
   /* Pieds de page */
   doc.pages.forEach((_, i) => {
