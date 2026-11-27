@@ -105,6 +105,9 @@ section.card{padding:22px;margin-bottom:16px}
 .tog input:checked+i{background:var(--g)}.tog input:checked+i::after{transform:translateX(20px)}
 .tog input:focus-visible+i{outline:3px solid color-mix(in srgb,var(--acc) 70%,transparent);outline-offset:2px}
 #quickCard.garde .chip{color:var(--gInk);border-color:color-mix(in srgb,var(--g) 45%,var(--edge))}
+/* Panneau d'ajout/modification en mode Garde : durées rapides en orange, comme sur l'accueil */
+#sheet.garde #presets .chip{color:var(--gInk);border-color:color-mix(in srgb,var(--g) 45%,var(--edge))}
+#sheet.garde #presets .chip.sel{background:var(--g);color:light-dark(#fff,#2b1600);border-color:transparent}
 #quickCard.garde .pri{background:var(--g);box-shadow:inset 0 1px 1px rgba(255,255,255,.45),0 10px 24px -10px var(--g)}
 .head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -690,6 +693,7 @@ function paintF() {
   document.querySelectorAll('[data-kind]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.kind === fKind)));
   if (!editing) $('#sTitle').textContent = fIsG() ? 'Ajouter une garde' : 'Ajouter des heures';
   $('#fGSec').hidden = !fIsG();
+  $('#sheet').classList.toggle('garde', fIsG());
   paint();
 }
 qG.checked = lsGet('heures-sup-garde') === '1'; qT.checked = lsGet('tictac-trajet') === '1'; paintQ();
@@ -1477,7 +1481,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 29';
+const APP_VERSION = '2026-11-27 · 30';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
