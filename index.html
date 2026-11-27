@@ -32,7 +32,7 @@
 --acc:light-dark(#0a66ff,#4a9bff);--g:light-dark(#ec7a12,#ffa64a);--gInk:light-dark(#a54a00,#ffb870);--red:light-dark(#d93025,#ff6a5f);
 --line:light-dark(rgba(11,16,32,.08),rgba(255,255,255,.09));
 --track:light-dark(rgba(11,16,32,.08),rgba(255,255,255,.1));
---cg:light-dark(#0f9488,#34c7b5);
+--cg:light-dark(#0f9488,#34c7b5);--fr:light-dark(#d93a32,#ff6b61);
 --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
@@ -185,7 +185,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .dsum span{display:block}
 .dcopy{display:block;margin:12px 0 0 auto;color:var(--acc);font-weight:600;font-size:15px;min-height:40px;padding:0 6px}
 .cc{background:var(--cg)}
-.xsteps{grid-template-columns:repeat(2,minmax(0,1fr));margin:6px 0 2px}
+.xsteps{grid-template-columns:repeat(3,minmax(0,1fr));margin:6px 0 2px}
+.xsteps button{gap:5px;font-size:14px;padding:0 4px}
+.fr{background:var(--fr)}
+.xsteps button[data-xs=fer][aria-pressed=true]{color:light-dark(#b3261e,#ff8a80)}
 .xsteps button[data-xs=ast][aria-pressed=true]{color:var(--gInk)}
 .xsteps button[data-xs=cong][aria-pressed=true]{color:light-dark(#0b6b62,#5fe0cf)}
 .cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0 8px}
@@ -197,9 +200,10 @@ svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .cal button.on{color:#fff;box-shadow:0 6px 16px -8px var(--sh)}
 .cal button.on.ast{background:var(--g)}
 .cal button.on.cong{background:var(--cg)}
+.cal button.on.fer{background:var(--fr)}
 .cal button i{position:absolute;bottom:4px;left:0;right:0;display:flex;justify-content:center;gap:3px;pointer-events:none}
 .cal button i b{width:5px;height:5px;border-radius:50%}
-.cal button i .mg{background:var(--g)}.cal button i .mc{background:var(--cg)}.cal button i .ma{background:var(--g)}
+.cal button i .mg{background:var(--g)}.cal button i .mc{background:var(--cg)}.cal button i .ma{background:var(--g)}.cal button i .mf{background:var(--fr)}
 .cal button.on i b{background:#fff}
 .xleg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mut);margin:0 4px 4px}
 .xleg span{display:inline-flex;align-items:center;gap:6px}
@@ -412,7 +416,7 @@ body.lock{position:fixed;left:0;right:0;width:100%}
 <div class="scrim" id="xScrim" aria-hidden="true">
   <div class="sheet glass" id="xSheet" role="dialog" aria-modal="true" aria-labelledby="xTitle">
     <div class="shead xhead"><h2 id="xTitle" tabindex="-1">Exporter</h2><button class="round" type="button" id="xClose" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-    <div class="seg kind xsteps" role="group" aria-label="Étape"><button type="button" data-xs="ast"><i class="dot g"></i>1. Astreintes</button><button type="button" data-xs="cong"><i class="dot cc"></i>2. Congés</button></div>
+    <div class="seg kind xsteps" role="group" aria-label="Étape"><button type="button" data-xs="ast"><i class="dot g"></i>1. Astreintes</button><button type="button" data-xs="cong"><i class="dot cc"></i>2. Congés</button><button type="button" data-xs="fer"><i class="dot fr"></i>3. Fériés</button></div>
     <p class="hint" id="xHint"></p>
     <div class="cal" id="cal"></div>
     <div class="xleg" id="xLeg"></div>
@@ -979,7 +983,7 @@ function exportPDF(k) {
     doc.text(bx + 8, bt + 13, 'Signature', {size: 8, color: mut});
   };
   const c1 = [L, L + 70, L + 300, L + 380];
-  const mm = monthMarks[k] || {ast: [], cong: []}, astS = new Set(mm.ast), congS = new Set(mm.cong);
+  const mm = monthMarks[k] || {ast: [], cong: [], fer: []}, astS = new Set(mm.ast), congS = new Set(mm.cong), ferS = new Set(mm.fer || []);
   const fit = (t, w, size, b) => { while (size > 6.5 && tw(t, size, b) > w) size -= 0.25; return size; };
   const plural = (n, w) => `${n} ${w}${n > 1 ? 's' : ''}`;
   let yy = 78; const hh = 22, rh = Math.min(19.2, (sigTop - 58 - yy - hh) / dim);
@@ -991,12 +995,12 @@ function exportPDF(k) {
     const date = `${k}-${pad(d)}`, dow = new Date(y, m - 1, d).getDay();
     const dayE = es.filter(e => e.date === date), nor = dayE.filter(e => !isG(e)), gar = dayE.filter(isG);
     const midi = sum(nor.filter(e => e.moment === 'midi')), ot = sum(nor), soir = ot - midi;
-    const cong = congS.has(date), ast = astS.has(date);
+    const fer = ferS.has(date), cong = !fer && congS.has(date), ast = astS.has(date);
     totN += ot; gN += gar.length; if (ast) aN++;
-    const ss = cong ? null : daySchedule(dow, midi, soir), by = yy + rh / 2 + 3.4;
-    if (!ss) doc.rect(L, yy, R - L, rh, cong ? [0.91, 0.965, 0.955] : [0.965, 0.966, 0.975]);
+    const ss = fer || cong ? null : daySchedule(dow, midi, soir), by = yy + rh / 2 + 3.4;
+    if (!ss) doc.rect(L, yy, R - L, rh, fer ? [0.995, 0.925, 0.915] : cong ? [0.91, 0.965, 0.955] : [0.965, 0.966, 0.975]);
     doc.text(c1[0] + 8, by, `${DOW_S[dow]} ${d}`, {size: S, color: ss ? ink : mut});
-    if (!ss) doc.text(c1[1] + 8, by, cong ? 'Congé' : 'Repos', {size: S, color: cong ? [0.05, 0.45, 0.41] : mut});
+    if (!ss) doc.text(c1[1] + 8, by, fer ? 'Férié' : cong ? 'Congé' : 'Repos', {size: S, color: fer ? [0.78, 0.18, 0.14] : cong ? [0.05, 0.45, 0.41] : mut});
     else {
       let x = c1[1] + 8;
       ss.forEach((s, i) => {
@@ -1082,20 +1086,22 @@ const cleanMonths = o => {
   for (const k in o) {
     if (!/^\d{4}-\d{2}$/.test(k) || !o[k]) continue;
     const pick = a => Array.isArray(a) ? [...new Set(a.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && d.startsWith(k)))].sort() : [];
-    const v = {ast: pick(o[k].ast), cong: pick(o[k].cong)};
-    if (v.ast.length || v.cong.length) out[k] = v;
+    const v = {ast: pick(o[k].ast), cong: pick(o[k].cong), fer: pick(o[k].fer)};
+    if (v.ast.length || v.cong.length || v.fer.length) out[k] = v;
   }
   return out;
 };
 const loadMonths = () => { let o = null; try { o = JSON.parse(lsGet(LS_MONTHS)); } catch (e) {} monthMarks = cleanMonths(o); };
 const saveMonths = () => { monthMarks = cleanMonths(monthMarks); if (!lsSet(LS_MONTHS, JSON.stringify(monthMarks))) toast('Échec de l\'enregistrement'); };
 let xMonth = null, xStep = 'ast';
+const XST = ['ast', 'cong', 'fer'];
 const XS = {
   ast: {hint: 'Touchez les jours où vous avez été d\'astreinte. Touchez à nouveau pour annuler.', back: 'Annuler', next: 'Suivant'},
-  cong: {hint: 'Touchez les jours non travaillés pour cause de congés. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Générer le PDF'}
+  cong: {hint: 'Touchez les jours non travaillés pour cause de congés. Touchez à nouveau pour annuler.', back: 'Retour', next: 'Suivant'},
+  fer: {hint: 'Touchez les jours fériés du mois. Touchez à nouveau pour annuler. Un jour férié l\'emporte sur un congé dans le PDF.', back: 'Retour', next: 'Générer le PDF'}
 };
 function paintX() {
-  const k = xMonth, mm = monthMarks[k] || {ast: [], cong: []}, A = new Set(mm.ast), C = new Set(mm.cong);
+  const k = xMonth, mm = monthMarks[k] || {ast: [], cong: [], fer: []}, A = new Set(mm.ast), C = new Set(mm.cong), FR = new Set(mm.fer || []), SET = {ast: A, cong: C, fer: FR};
   const [y, m] = k.split('-').map(Number), dim = new Date(y, m, 0).getDate(), first = (new Date(y, m - 1, 1).getDay() + 6) % 7, t = today();
   const gDays = new Set([...items.values()].filter(e => isG(e) && mk(e.date) === k).map(e => e.date));
   $('#xTitle').textContent = `Exporter ${mName(k).toLowerCase()}`;
@@ -1103,17 +1109,17 @@ function paintX() {
   $('#xHint').textContent = XS[xStep].hint;
   let h = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(w => `<div class="wd" aria-hidden="true">${w}</div>`).join('') + '<div></div>'.repeat(first);
   for (let d = 1; d <= dim; d++) {
-    const date = `${k}-${pad(d)}`, dow = new Date(y, m - 1, d).getDay(), on = (xStep === 'ast' ? A : C).has(date);
-    const marks = xStep === 'ast' ? [C.has(date) && 'mc', gDays.has(date) && 'mg'] : [A.has(date) && 'ma'];
-    const lbl = `${DAY_L[dow]} ${d}${A.has(date) ? ', astreinte' : ''}${C.has(date) ? ', congé' : ''}${gDays.has(date) ? ', garde enregistrée' : ''}`;
+    const date = `${k}-${pad(d)}`, dow = new Date(y, m - 1, d).getDay(), on = SET[xStep].has(date);
+    const marks = xStep === 'ast' ? [C.has(date) && 'mc', FR.has(date) && 'mf', gDays.has(date) && 'mg'] : xStep === 'cong' ? [A.has(date) && 'ma', FR.has(date) && 'mf'] : [A.has(date) && 'ma', C.has(date) && 'mc'];
+    const lbl = `${DAY_L[dow]} ${d}${A.has(date) ? ', astreinte' : ''}${C.has(date) ? ', congé' : ''}${FR.has(date) ? ', férié' : ''}${gDays.has(date) ? ', garde enregistrée' : ''}`;
     h += `<button type="button" class="${xStep}${on ? ' on' : ''}${daySegs(dow).length ? '' : ' off'}${date === t ? ' now' : ''}" data-xd="${date}" aria-pressed="${on}" aria-label="${esc(lbl)}">${d}<i>${marks.filter(Boolean).map(c => `<b class="${c}"></b>`).join('')}</i></button>`;
   }
   $('#cal').innerHTML = h;
-  $('#xLeg').innerHTML = xStep === 'ast'
-    ? `<span><i class="g"></i>Garde enregistrée</span><span><i class="cc"></i>Congé</span><span><i style="box-shadow:inset 0 0 0 1px var(--mut)"></i>Repos habituel</span>`
-    : `<span><i class="g"></i>Astreinte</span><span><i style="box-shadow:inset 0 0 0 1px var(--mut)"></i>Repos habituel</span>`;
-  const a = mm.ast.length, c = mm.cong.length;
-  $('#xSum').innerHTML = `<span><i class="g"></i>Astreintes <b>${a}</b></span><span><i class="cc"></i>Congés <b>${c} jour${c > 1 ? 's' : ''}</b></span>`;
+  const LG = {g: xStep === 'ast' ? 'Garde enregistrée' : 'Astreinte', cc: 'Congé', fr: 'Férié'};
+  const lg = xStep === 'ast' ? ['g', 'cc', 'fr'] : xStep === 'cong' ? ['g', 'fr'] : ['g', 'cc'];
+  $('#xLeg').innerHTML = lg.map(c => `<span><i class="${c}"></i>${LG[c]}</span>`).join('') + '<span><i style="box-shadow:inset 0 0 0 1px var(--mut)"></i>Repos habituel</span>';
+  const a = mm.ast.length, c = mm.cong.length, f = (mm.fer || []).length;
+  $('#xSum').innerHTML = `<span><i class="g"></i>Astreintes <b>${a}</b></span><span><i class="cc"></i>Congés <b>${c} jour${c > 1 ? 's' : ''}</b></span><span><i class="fr"></i>Fériés <b>${f}</b></span>`;
   $('#xBack').textContent = XS[xStep].back; $('#xNext').textContent = XS[xStep].next;
 }
 function openExport() {
@@ -1138,13 +1144,13 @@ $('#xSheet').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
   if (b.dataset.xs) { xStep = b.dataset.xs; paintX(); }
   else if (b.dataset.xd) {
-    const mm = monthMarks[xMonth] || (monthMarks[xMonth] = {ast: [], cong: []}), a = mm[xStep], i = a.indexOf(b.dataset.xd);
+    const mm = monthMarks[xMonth] || (monthMarks[xMonth] = {ast: [], cong: [], fer: []}), a = mm[xStep], i = a.indexOf(b.dataset.xd);
     if (i < 0) a.push(b.dataset.xd); else a.splice(i, 1);
     saveMonths(); paintX();
     const nb = $(`#cal [data-xd="${b.dataset.xd}"]`); if (nb && document.activeElement === document.body) nb.focus({preventScroll: true});
   }
-  else if (b.id === 'xBack') { if (xStep === 'ast') closeExport(); else { xStep = 'ast'; paintX(); } }
-  else if (b.id === 'xNext') { if (xStep === 'ast') { xStep = 'cong'; paintX(); } else generatePDF(); }
+  else if (b.id === 'xBack') { const i = XST.indexOf(xStep); if (!i) closeExport(); else { xStep = XST[i - 1]; paintX(); } }
+  else if (b.id === 'xNext') { const i = XST.indexOf(xStep); if (i < XST.length - 1) { xStep = XST[i + 1]; paintX(); } else generatePDF(); }
 });
 
 /* ---------- Sauvegarde : export / import JSON ---------- */
