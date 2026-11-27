@@ -796,11 +796,28 @@ function closeScrim(scrim) {
 }
 /* Pas de « préchauffage » au moment où le doigt se pose : sur iPhone, rendre un élément visible pendant le toucher
    fait croire à Safari qu'il s'agit d'un menu au survol, et il annule le clic (il fallait toucher deux fois). */
-/* Pas de défilement de la page derrière le voile (molette, trackpad, anciens iOS) */
+/* Pas de défilement de la page derrière un panneau ouvert. Sans verrou sur <html> (qui ralentissait l'ouverture),
+   on bloque le geste quand il ne peut pas faire défiler le panneau lui-même : hors du panneau, panneau trop court
+   pour défiler (cas de l'export), ou déjà en butée en haut ou en bas. Sinon Safari le transmettait à la page. */
+const sheetCanScroll = (sheet, dy) => {
+  if (sheet.scrollHeight <= sheet.clientHeight + 1) return false;
+  if (dy < 0) return sheet.scrollTop > 0;
+  return sheet.scrollTop + sheet.clientHeight < sheet.scrollHeight - 1;
+};
 document.querySelectorAll('.scrim').forEach(sc => {
-  const stop = ev => { if (!ev.target.closest('.sheet')) ev.preventDefault(); };
-  sc.addEventListener('wheel', stop, {passive: false});
-  sc.addEventListener('touchmove', stop, {passive: false});
+  let ty = 0;
+  sc.addEventListener('touchstart', ev => { if (ev.touches.length === 1) ty = ev.touches[0].clientY; }, {passive: true});
+  sc.addEventListener('touchmove', ev => {
+    if (!ev.cancelable) return;
+    const sheet = ev.target.closest('.sheet');
+    if (!sheet || ev.touches.length > 1) { ev.preventDefault(); return; }
+    const y = ev.touches[0].clientY, dy = ty - y; ty = y;
+    if (dy !== 0 && !sheetCanScroll(sheet, dy)) ev.preventDefault();
+  }, {passive: false});
+  sc.addEventListener('wheel', ev => {
+    const sheet = ev.target.closest('.sheet');
+    if (!sheet || !sheetCanScroll(sheet, ev.deltaY)) ev.preventDefault();
+  }, {passive: false});
 });
 function closeSheet() { closeScrim($('#scrim')); editing = null; }
 
@@ -1450,7 +1467,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 22';
+const APP_VERSION = '2026-11-27 · 23';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
