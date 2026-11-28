@@ -793,6 +793,7 @@ function openScrim(scrim, focusEl) {
   const sheet = scrim.querySelector('.sheet');
   warmScrim(scrim);
   scrim.setAttribute('aria-hidden', 'false');
+  sheet.scrollTop = 0; /* toujours rouvert en haut, même s'il avait été défilé avant sa fermeture */
   const d = offDist(sheet);
   sheet.style.transition = 'none';
   sheet.style.transform = `translateY(${d}px)`;
@@ -1488,7 +1489,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-27 · 36';
+const APP_VERSION = '2026-11-28 · 37';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
