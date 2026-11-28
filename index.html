@@ -945,8 +945,21 @@ mainEl.addEventListener('touchstart', ev => {
   const t = ev.touches[0];
   /* Pas de geste depuis un champ, la bande des mois (qui défile) ou les bords de l'écran (geste « retour » du système) */
   if (ev.target.closest('input,textarea,select,.strip') || t.clientX < 20 || t.clientX > innerWidth - 20) return;
-  sw = {x: t.clientX, y: t.clientY, t: performance.now(), lock: null, dx: 0};
+  /* Sur la carte du mois (Historique, Prime), le geste change de mois au lieu de changer d'onglet */
+  const card = ev.target.closest('.mnav');
+  sw = {x: t.clientX, y: t.clientY, t: performance.now(), lock: null, dx: 0, card};
 }, {passive: true});
+const monthBtns = card => { const r = card.querySelectorAll('.round'); return {prev: r[0], next: r[r.length - 1]}; };
+function goMonth(card, dir) {
+  const btn = monthBtns(card)[dir > 0 ? 'next' : 'prev'], c = card.querySelector('.c');
+  if (reduceMotion.matches || !c.animate) { c.style.cssText = ''; btn.click(); return; }
+  const from = c.style.transform || 'none', op = c.style.opacity || '1';
+  c.animate([{transform: from, opacity: op}, {transform: `translateX(${-dir * 70}px)`, opacity: 0}], {duration: 120, easing: 'ease-in'}).onfinish = () => {
+    c.style.cssText = '';
+    btn.click();
+    c.animate([{transform: `translateX(${dir * 70}px)`, opacity: 0}, {transform: 'none', opacity: 1}], {duration: 220, easing: 'cubic-bezier(.2,.9,.3,1)'});
+  };
+}
 mainEl.addEventListener('touchmove', ev => {
   if (!sw) return;
   const t = ev.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
@@ -958,6 +971,13 @@ mainEl.addEventListener('touchmove', ev => {
   ev.preventDefault();
   sw.dx = dx;
   if (reduceMotion.matches) return;
+  if (sw.card) {
+    const {prev, next} = monthBtns(sw.card), c = sw.card.querySelector('.c'), edge = (dx > 0 && prev.disabled) || (dx < 0 && next.disabled);
+    c.style.transition = 'none';
+    c.style.transform = `translateX(${dx * (edge ? .12 : .5)}px)`;
+    c.style.opacity = edge ? '' : String(Math.max(.35, 1 - Math.abs(dx) / 260));
+    return;
+  }
   const i = VIEWS.indexOf(curView()), edge = (dx > 0 && i === 0) || (dx < 0 && i === VIEWS.length - 1), el = viewEl();
   el.style.transition = 'none';
   el.style.transform = `translateX(${dx * (edge ? .12 : .6)}px)`;
@@ -966,6 +986,16 @@ function swEnd(ev) {
   const s = sw; sw = null;
   if (!s || s.lock !== 'x') return;
   const cancel = ev && ev.type === 'touchcancel';
+  if (s.card) {
+    /* Glisser vers la gauche : mois suivant ; vers la droite : mois précédent */
+    const mdir = s.dx < 0 ? 1 : -1, {prev, next} = monthBtns(s.card), c = s.card.querySelector('.c');
+    const fastM = Math.abs(s.dx) > 40 && performance.now() - s.t < 280;
+    if (!cancel && (Math.abs(s.dx) > 60 || fastM) && !(mdir > 0 ? next : prev).disabled) { goMonth(s.card, mdir); return; }
+    c.style.transition = 'transform .22s cubic-bezier(.2,.9,.3,1), opacity .22s';
+    c.style.transform = ''; c.style.opacity = '';
+    setTimeout(() => { if (!sw) c.style.cssText = ''; }, 240);
+    return;
+  }
   const i = VIEWS.indexOf(curView()), dir = s.dx < 0 ? 1 : -1, j = i + dir;
   const fast = Math.abs(s.dx) > 40 && performance.now() - s.t < 280;
   if (!cancel && (Math.abs(s.dx) > 70 || fast) && j >= 0 && j < VIEWS.length) { goView(VIEWS[j], dir); return; }
@@ -1489,7 +1519,7 @@ document.addEventListener('touchmove', ev => { if (ev.touches.length > 1 || (ev.
 /* Le double-toucher est déjà neutralisé par touch-action: manipulation (sans bloquer les touchers rapides sur les boutons) */
 
 /* Version affichée dans Paramètres → Données, pour vérifier que la dernière mise à jour est bien chargée */
-const APP_VERSION = '2026-11-28 · 37';
+const APP_VERSION = '2026-11-28 · 38';
 $('#appVer').textContent = `Version ${APP_VERSION}`;
 
 /* ---------- Démarrage ---------- */
